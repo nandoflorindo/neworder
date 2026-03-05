@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Order - KS Intelligence</title>
+    <title>New Order - KS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
@@ -29,6 +29,7 @@
         .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: #94a3b8; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: #059669; }
         input:checked + .slider:before { transform: translateX(20px); background-color: white; }
+        .paste-btn-active { border: 2px solid #ef4444 !important; background: rgba(239, 68, 68, 0.1) !important; color: #ef4444 !important; }
     </style>
 </head>
 <body class="p-4 md:p-6">
@@ -66,7 +67,6 @@
     <div class="max-w-[1600px] mx-auto">
         <div id="waitScreen" class="hidden max-w-md mx-auto mt-20 glass p-8 text-center border-t-4 border-yellow-600">
             <h2 class="text-2xl font-bold text-yellow-500 mb-4 uppercase italic">Acesso Restrito</h2>
-            <p class="text-xs text-slate-400 mb-6">Aguarde a aprovação do Nando para entrar no sistema.</p>
             <button onclick="logout()" class="text-blue-400 underline uppercase text-[10px]">Sair da Conta</button>
         </div>
 
@@ -102,7 +102,7 @@
                 </div>
 
                 <div class="glass p-3 border-slate-700 border min-w-[240px]">
-                    <h3 class="text-[9px] font-bold text-slate-500 uppercase mb-2 italic border-b border-slate-800/50 pb-1">Operadores Online:</h3>
+                    <h3 class="text-[9px] font-bold text-slate-500 uppercase mb-2 italic border-b border-slate-800/50 pb-1">Online:</h3>
                     <div id="onlineList" class="flex flex-wrap gap-2 text-[10px] font-bold uppercase italic text-green-400"></div>
                 </div>
 
@@ -132,9 +132,18 @@
                                 <input type="time" id="timeStart" class="w-full">
                                 <input type="time" id="timeEnd" class="w-full">
                             </div>
-                            <div class="p-3 bg-slate-900/50 rounded-lg border border-slate-700 space-y-2">
-                                <input type="file" id="imgStart" accept="image/*" class="text-[9px] w-full">
-                                <input type="file" id="imgEnd" accept="image/*" class="text-[9px] w-full">
+                            <div class="p-3 bg-slate-900/50 rounded-lg border border-slate-700 space-y-4">
+                                <div class="space-y-2">
+                                    <label class="text-[9px] font-bold text-slate-500 uppercase">Print 1 (Anexar ou Colar)</label>
+                                    <input type="file" id="imgStart" accept="image/*" class="text-[9px] w-full">
+                                    <button id="btnPaste1" onclick="handlePasteAction('imgStart', this)" class="w-full bg-slate-800 border border-slate-600 py-1 rounded font-bold uppercase text-[8px] hover:border-red-500 transition">Ativar Colagem (Ctrl+V)</button>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-[9px] font-bold text-slate-500 uppercase">Print 2 (Anexar ou Colar)</label>
+                                    <input type="file" id="imgEnd" accept="image/*" class="text-[9px] w-full">
+                                    <button id="btnPaste2" onclick="handlePasteAction('imgEnd', this)" class="w-full bg-slate-800 border border-slate-600 py-1 rounded font-bold uppercase text-[8px] hover:border-red-500 transition">Ativar Colagem (Ctrl+V)</button>
+                                </div>
+                                <button onclick="clearPrints()" class="w-full bg-slate-900 text-slate-500 border border-slate-800 py-1 rounded text-[8px] font-bold uppercase hover:text-white transition">Limpar Prints</button>
                             </div>
                             <button id="sendBtn" onclick="sendReport()" class="w-full bg-green-600 hover:bg-green-700 py-3 rounded font-bold uppercase text-xs shadow-lg transition">Transmitir KS</button>
                         </div>
@@ -148,7 +157,7 @@
                 <div class="lg:col-span-6">
                     <div class="glass p-6 min-h-[600px] shadow-2xl">
                         <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-slate-800 pb-4 gap-2">
-                            <h2 class="text-xl font-bold uppercase text-slate-400 italic">Mural</h2>
+                            <h2 class="text-xl font-bold uppercase text-slate-400 italic">Lista de KS</h2>
                             <div class="flex gap-2">
                                 <select id="filterStatusMural" onchange="loadReports()" class="text-[10px] glass">
                                     <option value="Todos">Todos</option>
@@ -205,7 +214,68 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth(); const db = firebase.firestore(); const storage = firebase.storage(); const rtdb = firebase.database();
 
-        let currentUID = "", currentNick = "", isAdmin = false, isRegisterMode = false, currentReportId = "", priorityAlvos = [];
+        let currentUID = "", currentNick = "", isAdmin = false, isRegisterMode = false, activeInputId = null, activeBtn = null, priorityAlvos = [];
+
+        function clearPrints() {
+            document.getElementById('imgStart').value = "";
+            document.getElementById('imgEnd').value = "";
+            resetPasteButtons();
+            activeInputId = null;
+        }
+
+        function resetPasteButtons() {
+            const b1 = document.getElementById('btnPaste1');
+            const b2 = document.getElementById('btnPaste2');
+            b1.innerText = "Ativar Colagem (Ctrl+V)"; b1.classList.remove('paste-btn-active'); b1.style.background = ""; b1.style.borderColor = "";
+            b2.innerText = "Ativar Colagem (Ctrl+V)"; b2.classList.remove('paste-btn-active'); b2.style.background = ""; b2.style.borderColor = "";
+        }
+
+        async function handlePasteAction(inputId, btn) {
+            try {
+                const clipboardItems = await navigator.clipboard.read();
+                for (const item of clipboardItems) {
+                    for (const type of item.types) {
+                        if (type.startsWith('image/')) {
+                            const blob = await item.getType(type);
+                            const dt = new DataTransfer();
+                            dt.items.add(new File([blob], "paste.png", { type }));
+                            document.getElementById(inputId).files = dt.files;
+                            btn.innerText = "FOTO OK!"; btn.style.background = "#059669"; btn.style.borderColor = "#10b981";
+                            return;
+                        }
+                    }
+                }
+                activatePasteFallback(inputId, btn);
+            } catch (err) { activatePasteFallback(inputId, btn); }
+        }
+
+        function activatePasteFallback(inputId, btn) {
+            resetPasteButtons();
+            activeInputId = inputId; activeBtn = btn;
+            btn.classList.add('paste-btn-active'); btn.innerText = "AGUARDANDO CTRL+V...";
+        }
+
+        window.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && activeInputId) {
+                resetPasteButtons();
+                activeInputId = null;
+            }
+        });
+
+        window.addEventListener('paste', e => {
+            if (!activeInputId) return;
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let index in items) {
+                const item = items[index];
+                if (item.kind === 'file') {
+                    const blob = item.getAsFile();
+                    const dt = new DataTransfer(); dt.items.add(blob);
+                    document.getElementById(activeInputId).files = dt.files;
+                    activeBtn.innerText = "FOTO OK!"; activeBtn.classList.remove('paste-btn-active');
+                    activeBtn.style.background = "#059669"; activeInputId = null;
+                }
+            }
+        });
 
         auth.onAuthStateChanged(async (user) => {
             if (user) {
@@ -221,63 +291,45 @@
                     currentNick = ud.nick; isAdmin = ud.role === "admin";
                     document.getElementById('dashboard').classList.remove('hidden');
                     document.getElementById('loginSection').classList.add('hidden');
-                    document.getElementById('welcomeMsg').innerText = `MASTER: ${currentNick}`;
-                    
+                    document.getElementById('welcomeMsg').innerText = `Nick: ${currentNick}`;
                     db.collection("users").doc(currentUID).onSnapshot(s => {
                         const on = s.data()?.isOnline || false;
                         document.getElementById('statusToggle').checked = on;
                         document.getElementById('statusLabel').innerText = on ? "Online" : "Offline";
                     });
-
                     db.collection("hunteds").where("priority", "==", true).onSnapshot(s => { priorityAlvos = s.docs.map(d => d.data().nick.toUpperCase()); loadReports(); });
                     monitorOnline();
                     if(isAdmin) { document.querySelectorAll('.adm-tool').forEach(t => t.classList.remove('hidden')); loadUsers(); cleanupOldReports(); }
                     loadReports(); loadHunteds();
                 } else if (!isRegisterMode) { auth.signOut(); }
-            } else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('dashboard').classList.add('hidden'); document.getElementById('waitScreen').classList.add('hidden'); }
+            } else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('dashboard').classList.add('hidden'); }
         });
 
         async function handleAuth() {
-            const email = document.getElementById('userEmail').value;
-            const pass = document.getElementById('userPass').value;
-            const nick = document.getElementById('userNickRegister').value;
-            const btn = document.getElementById('mainBtn');
+            const email = document.getElementById('userEmail').value, pass = document.getElementById('userPass').value, nick = document.getElementById('userNickRegister').value, btn = document.getElementById('mainBtn');
             if(!email || !pass) return alert("Preencha!");
             btn.innerText = "..."; btn.disabled = true;
-            try {
-                if (isRegisterMode) {
-                    const res = await auth.createUserWithEmailAndPassword(email, pass);
-                    await db.collection("users").doc(res.user.uid).set({ nick, email, role: "member", status: "pendente", isOnline: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-                    alert("Aguarde liberação!"); 
-                    await auth.signOut();
-                    location.reload(); 
-                } else { await auth.signInWithEmailAndPassword(email, pass); }
-            } catch (e) { alert(e.message); btn.innerText = "Entrar"; btn.disabled = false; }
+            try { if (isRegisterMode) { const res = await auth.createUserWithEmailAndPassword(email, pass); await db.collection("users").doc(res.user.uid).set({ nick, email, role: "member", status: "pendente", isOnline: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); alert("Aguarde liberação!"); await auth.signOut(); location.reload(); } else { await auth.signInWithEmailAndPassword(email, pass); } } catch (e) { alert(e.message); btn.innerText = "Entrar"; btn.disabled = false; }
         }
 
         function loadReports() {
-            const search = document.getElementById('searchEnemy').value.toUpperCase();
-            const filter = document.getElementById('filterStatusMural').value;
+            const search = document.getElementById('searchEnemy').value.toUpperCase(), filter = document.getElementById('filterStatusMural').value;
             db.collection("reports").orderBy("timestamp", "desc").onSnapshot(snap => {
                 const tbody = document.getElementById('reportsBody'); tbody.innerHTML = ""; let sc = {};
                 snap.forEach(doc => {
-                    const r = doc.data(); 
-                    if(r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
-                    
-                    const priority = priorityAlvos.includes(r.enemy.toUpperCase());
-                    const vis = isAdmin || r.status !== "Pendente" || r.reporter === currentNick;
-                    
-                    const matchesSearch = !search || r.enemy.includes(search) || r.respawn?.toUpperCase().includes(search);
-                    const matchesFilter = filter === "Todos" || r.status === filter;
-
-                    if (vis && matchesSearch && matchesFilter) {
-                        tbody.innerHTML += `<tr class="hover:bg-slate-800/30 ${priority?'priority-row':''}">
+                    const r = doc.data(); if(r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
+                    const prio = priorityAlvos.includes(r.enemy.toUpperCase()), vis = isAdmin || r.status !== "Pendente" || r.reporter === currentNick;
+                    if (vis && (!search || r.enemy.includes(search) || r.respawn?.toUpperCase().includes(search)) && (filter === "Todos" || r.status === filter)) {
+                        tbody.innerHTML += `<tr class="hover:bg-slate-800/30 ${prio?'priority-row':''}">
                             <td class="p-4 text-[9px] italic font-bold text-slate-500">${r.timestamp?.toDate().toLocaleDateString() || '...'}</td>
                             <td class="p-4"><div class="font-bold text-red-500 uppercase">${r.enemy}</div><div class="text-[9px] text-slate-400 italic">${r.respawn || ''}</div></td>
                             <td class="p-4 font-bold uppercase italic">${r.reporter}</td>
                             <td class="p-4 font-bold text-yellow-500 text-center">${r.points} pts<br><span class="text-[8px] uppercase ${r.status==='Recusado'?'text-red-500':'text-blue-400'}">${r.status}</span></td>
                             <td class="p-4 text-center"><button onclick="openZoom('${r.imgStart}')" class="text-blue-500 text-[10px] underline">P1</button>${r.imgEnd?`<button onclick="openZoom('${r.imgEnd}')" class="text-blue-500 text-[10px] underline ml-2">P2</button>`:''}${r.reason ? `<div class="text-[8px] text-red-400 italic mt-1">Negado: ${r.reason}</div>` : ''}</td>
-                            <td class="p-4 text-right adm-tool ${isAdmin?'':'hidden'}"><button onclick="openEditModal('${doc.id}', '${r.status}', ${r.points}, '${r.reason||''}')" class="text-white hover:text-red-500">✎</button></td>
+                            <td class="p-4 text-right adm-tool ${isAdmin?'':'hidden'} space-x-2">
+                                <button onclick="openEditModal('${doc.id}', '${r.status}', ${r.points}, '${r.reason||''}')" class="text-white hover:text-red-500">✎</button>
+                                <button onclick="if(confirm('Apagar postagem?'))db.collection('reports').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button>
+                            </td>
                         </tr>`;
                     }
                 });
@@ -285,46 +337,18 @@
             });
         }
 
-        function renderRanking(sc) {
-            const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0, 10);
-            document.getElementById('ranking').innerHTML = sorted.map(([n, p], i) => {
-                let rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
-                return `<div class="flex justify-between p-3 glass text-xs shadow-md ${rankClass}"><span><b>${i+1}.</b> ${n}</span><span class="font-black">${p} pts</span></div>`;
-            }).join('');
-        }
-
-        function loadHunteds() {
-            const search = document.getElementById('searchHunted').value.toUpperCase();
-            db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => {
-                const tbody = document.getElementById('huntedBody'); tbody.innerHTML = "";
-                snap.forEach(doc => {
-                    const h = doc.data();
-                    if(!search || h.nick.includes(search) || h.lvl?.toString().includes(search) || h.voc?.toUpperCase().includes(search)) {
-                        tbody.innerHTML += `<tr><td class="py-2 font-bold uppercase ${h.priority?'text-yellow-500':'text-red-500'}">${h.priority?'⭐ ':''}${h.nick}</td><td class="py-2 text-slate-400 italic font-bold">${h.lvl || '--'}</td><td class="py-2 text-blue-400 font-bold">${h.voc || '--'}</td><td class="py-2 text-right adm-tool ${isAdmin?'':'hidden'}"><button onclick="db.collection('hunteds').doc('${doc.id}').update({priority:!${h.priority||false}})" class="text-slate-500 hover:text-yellow-500 mr-2">⭐</button><button onclick="if(confirm('Remover?'))db.collection('hunteds').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button></td></tr>`;
-                    }
-                });
-            });
-        }
-
-        function loadUsers() {
-            db.collection("users").onSnapshot(snap => {
-                const tbody = document.getElementById('usersTableBody'); tbody.innerHTML = "";
-                snap.forEach(doc => {
-                    const u = doc.data(); const isP = u.status === 'pendente';
-                    tbody.innerHTML += `<tr class="border-b border-slate-800/50"><td class="p-2 font-bold uppercase italic">${u.nick}</td><td class="p-2"><span class="text-[9px] uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-[7px] ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td><td class="p-2 text-right space-x-1">${isP?`<button onclick="db.collection('users').doc('${doc.id}').update({status:'aprovado'})" class="bg-green-600 px-2 py-1 rounded text-[9px] font-bold">OK</button>`:''}<button onclick="db.collection('users').doc('${doc.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-2 py-1 rounded text-[9px] font-bold">CARGO</button><button onclick="if(confirm('Banir?'))db.collection('users').doc('${doc.id}').delete()" class="bg-red-900 px-2 py-1 rounded text-[9px] font-bold">X</button></td></tr>`;
-                });
-            });
-        }
-
-        async function sendReport() { const btn = document.getElementById('sendBtn'); const f1 = document.getElementById('imgStart').files[0]; const f2 = document.getElementById('imgEnd').files[0]; const en = document.getElementById('enemyName').value; if(!f1 || !en) return alert("Nick e Print 1!"); btn.innerText = "..."; try { const u1 = await upload(f1); const u2 = await upload(f2); await db.collection("reports").add({ enemy: en.toUpperCase(), respawn: document.getElementById('respawn').value, reporter: currentNick, timeS: document.getElementById('timeStart').value, timeE: document.getElementById('timeEnd').value, imgStart: u1, imgEnd: u2, status: "Pendente", points: 0, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); alert("Enviado!"); location.reload(); } catch(e){ btn.innerText = "Transmitir"; } }
+        function renderRanking(sc) { const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0, 10); document.getElementById('ranking').innerHTML = sorted.map(([n, p], i) => `<div class="flex justify-between p-3 glass text-xs shadow-md ${i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':''}"><span><b>${i+1}.</b> ${n}</span><span class="font-black">${p} pts</span></div>`).join(''); }
+        function loadHunteds() { const search = document.getElementById('searchHunted').value.toUpperCase(); db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => { const tbody = document.getElementById('huntedBody'); tbody.innerHTML = ""; snap.forEach(doc => { const h = doc.data(); if(!search || h.nick.includes(search) || h.lvl?.toString().includes(search) || h.voc?.toUpperCase().includes(search)) { tbody.innerHTML += `<tr><td class="py-2 font-bold uppercase ${h.priority?'text-yellow-500':'text-red-500'}">${h.priority?'⭐ ':''}${h.nick}</td><td class="py-2 text-slate-400 italic font-bold">${h.lvl || '--'}</td><td class="py-2 text-blue-400 font-bold">${h.voc || '--'}</td><td class="py-2 text-right adm-tool ${isAdmin?'':'hidden'}"><button onclick="db.collection('hunteds').doc('${doc.id}').update({priority:!${h.priority||false}})" class="text-slate-500 hover:text-yellow-500 mr-2">⭐</button><button onclick="if(confirm('Remover?'))db.collection('hunteds').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button></td></tr>`; } }); }); }
+        function loadUsers() { db.collection("users").onSnapshot(snap => { const tbody = document.getElementById('usersTableBody'); tbody.innerHTML = ""; snap.forEach(doc => { const u = doc.data(); const isP = u.status === 'pendente'; tbody.innerHTML += `<tr class="border-b border-slate-800/50"><td class="p-2 font-bold uppercase italic">${u.nick}</td><td class="p-2"><span class="text-[9px] uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-[7px] ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td><td class="p-2 text-right space-x-1">${isP?`<button onclick="db.collection('users').doc('${doc.id}').update({status:'aprovado'})" class="bg-green-600 px-2 py-1 rounded text-[9px] font-bold">OK</button>`:''}<button onclick="db.collection('users').doc('${doc.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-2 py-1 rounded text-[9px] font-bold">CARGO</button><button onclick="if(confirm('Banir?'))db.collection('users').doc('${doc.id}').delete()" class="bg-red-900 px-2 py-1 rounded text-[9px] font-bold">X</button></td></tr>`; }); }); }
+        async function sendReport() { const btn = document.getElementById('sendBtn'); const en = document.getElementById('enemyName').value; if(!en) return alert("Nick Inimigo obrigatório!"); btn.innerText = "..."; try { const u1 = await upload(document.getElementById('imgStart').files[0]), u2 = await upload(document.getElementById('imgEnd').files[0]); await db.collection("reports").add({ enemy: en.toUpperCase(), respawn: document.getElementById('respawn').value, reporter: currentNick, timeS: document.getElementById('timeStart').value, timeE: document.getElementById('timeEnd').value, imgStart: u1, imgEnd: u2, status: "Pendente", points: 0, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); alert("Enviado!"); location.reload(); } catch(e){ btn.innerText = "Transmitir"; } }
         async function upload(f) { if(!f) return null; const ref = storage.ref(`provas/${Date.now()}_${f.name}`); await ref.put(f); return await ref.getDownloadURL(); }
         async function toggleOnlineStatus() { const s = document.getElementById('statusToggle').checked; await db.collection("users").doc(currentUID).update({ isOnline: s }); await rtdb.ref('/status/'+currentUID).update({ isOnline: s, nick: currentNick }); }
-        function monitorOnline() { db.collection("users").where("isOnline", "==", true).onSnapshot(snap => { const div = document.getElementById('onlineList'); div.innerHTML = ""; snap.forEach(doc => { div.innerHTML += `<span class="bg-slate-800 px-2 py-1 rounded border border-green-500/20 text-green-400">● ${doc.data().nick}</span>`; }); }); }
+        function monitorOnline() { db.collection("users").where("isOnline", "==", true).onSnapshot(snap => { const div = document.getElementById('onlineList'); div.innerHTML = ""; snap.forEach(doc => { div.innerHTML += `<span class="bg-slate-800 px-3 py-1 rounded border border-green-500/20 text-green-400">● ${doc.data().nick}</span>`; }); }); }
         function openEditModal(id, status, points, reason) { currentReportId = id; document.getElementById('editStatus').value = status; document.getElementById('editPoints').value = points; document.getElementById('editReason').value = reason; toggleReasonField(); document.getElementById('editModal').style.display = 'flex'; }
         function toggleReasonField() { document.getElementById('reasonDiv').style.display = document.getElementById('editStatus').value === 'Recusado' ? 'block' : 'none'; }
         async function saveEdit() { await db.collection("reports").doc(currentReportId).update({ status: document.getElementById('editStatus').value, points: parseInt(document.getElementById('editPoints').value), reason: document.getElementById('editStatus').value === 'Recusado' ? document.getElementById('editReason').value : "" }); closeModal('editModal'); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        async function addHunted() { const n = document.getElementById('hNick').value.toUpperCase(); const l = document.getElementById('hLevel').value; const v = document.getElementById('hVoc').value; if(!n || !l) return; await db.collection("hunteds").add({ nick: n, lvl: l, voc: v, priority: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); toggleHuntedForm(); }
+        async function addHunted() { const n = document.getElementById('hNick').value.toUpperCase(), l = document.getElementById('hLevel').value, v = document.getElementById('hVoc').value; if(!n || !l) return; await db.collection("hunteds").add({ nick: n, lvl: l, voc: v, priority: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); toggleHuntedForm(); }
         function toggleAuthMode() { isRegisterMode = !isRegisterMode; document.getElementById('registerFields').classList.toggle('hidden'); document.getElementById('mainBtn').innerText = isRegisterMode ? "Cadastrar" : "Entrar"; }
         function logout() { auth.signOut(); location.reload(); }
         function showUserPanel() { document.getElementById('userPanel').classList.toggle('hidden'); }
