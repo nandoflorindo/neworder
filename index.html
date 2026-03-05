@@ -139,7 +139,7 @@
                             <button id="sendBtn" onclick="sendReport()" class="w-full bg-green-600 hover:bg-green-700 py-3 rounded font-bold uppercase text-xs shadow-lg transition">Transmitir KS</button>
                         </div>
                     </div>
-                    <div class="glass p-5">
+                    <div class="glass p-5 adm-tool hidden">
                         <h2 class="text-[10px] font-bold text-yellow-500 uppercase border-b border-yellow-900/30 pb-2 mb-4 tracking-widest">Top 10 Operadores</h2>
                         <div id="ranking" class="space-y-3"></div>
                     </div>
@@ -147,9 +147,17 @@
 
                 <div class="lg:col-span-6">
                     <div class="glass p-6 min-h-[600px] shadow-2xl">
-                        <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-                            <h2 class="text-xl font-bold uppercase text-slate-400 italic">Mural de Operações</h2>
-                            <input type="text" id="searchEnemy" oninput="loadReports()" placeholder="FILTRAR MURAL..." class="text-[10px] w-48 glass uppercase">
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-slate-800 pb-4 gap-2">
+                            <h2 class="text-xl font-bold uppercase text-slate-400 italic">Mural</h2>
+                            <div class="flex gap-2">
+                                <select id="filterStatusMural" onchange="loadReports()" class="text-[10px] glass">
+                                    <option value="Todos">Todos</option>
+                                    <option value="Pendente">Pendentes</option>
+                                    <option value="Aprovado">Aprovados</option>
+                                    <option value="Recusado">Recusados</option>
+                                </select>
+                                <input type="text" id="searchEnemy" oninput="loadReports()" placeholder="BUSCAR..." class="text-[10px] w-32 glass uppercase">
+                            </div>
                         </div>
                         <div class="overflow-x-auto text-white">
                             <table class="w-full text-left text-xs">
@@ -219,7 +227,6 @@
                         const on = s.data()?.isOnline || false;
                         document.getElementById('statusToggle').checked = on;
                         document.getElementById('statusLabel').innerText = on ? "Online" : "Offline";
-                        document.getElementById('statusLabel').className = on ? "text-[8px] font-bold uppercase text-green-500" : "text-[8px] font-bold uppercase text-slate-500";
                     });
 
                     db.collection("hunteds").where("priority", "==", true).onSnapshot(s => { priorityAlvos = s.docs.map(d => d.data().nick.toUpperCase()); loadReports(); });
@@ -242,7 +249,6 @@
                     const res = await auth.createUserWithEmailAndPassword(email, pass);
                     await db.collection("users").doc(res.user.uid).set({ nick, email, role: "member", status: "pendente", isOnline: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
                     alert("Aguarde liberação!"); 
-                    // AJUSTE: VOLTA PARA TELA DE LOGIN APÓS CRIAR CONTA
                     await auth.signOut();
                     location.reload(); 
                 } else { await auth.signInWithEmailAndPassword(email, pass); }
@@ -251,13 +257,20 @@
 
         function loadReports() {
             const search = document.getElementById('searchEnemy').value.toUpperCase();
+            const filter = document.getElementById('filterStatusMural').value;
             db.collection("reports").orderBy("timestamp", "desc").onSnapshot(snap => {
                 const tbody = document.getElementById('reportsBody'); tbody.innerHTML = ""; let sc = {};
                 snap.forEach(doc => {
-                    const r = doc.data(); if(r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
+                    const r = doc.data(); 
+                    if(r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
+                    
                     const priority = priorityAlvos.includes(r.enemy.toUpperCase());
                     const vis = isAdmin || r.status !== "Pendente" || r.reporter === currentNick;
-                    if (vis && (!search || r.enemy.includes(search) || r.respawn?.toUpperCase().includes(search))) {
+                    
+                    const matchesSearch = !search || r.enemy.includes(search) || r.respawn?.toUpperCase().includes(search);
+                    const matchesFilter = filter === "Todos" || r.status === filter;
+
+                    if (vis && matchesSearch && matchesFilter) {
                         tbody.innerHTML += `<tr class="hover:bg-slate-800/30 ${priority?'priority-row':''}">
                             <td class="p-4 text-[9px] italic font-bold text-slate-500">${r.timestamp?.toDate().toLocaleDateString() || '...'}</td>
                             <td class="p-4"><div class="font-bold text-red-500 uppercase">${r.enemy}</div><div class="text-[9px] text-slate-400 italic">${r.respawn || ''}</div></td>
@@ -318,7 +331,7 @@
         function toggleHuntedForm() { document.getElementById('huntedForm').classList.toggle('hidden'); }
         function openZoom(u) { document.getElementById('modalImg').src = u; document.getElementById('zoomModal').style.display = 'flex'; }
         async function cleanupOldReports() { const limit = new Date(); limit.setDate(limit.getDate() - 30); const snap = await db.collection("reports").where("timestamp", "<", limit).get(); snap.forEach(async (doc) => { await db.collection("reports").doc(doc.id).delete(); }); }
-        function resetPassword() { const e = document.getElementById('userEmail').value; if(e) auth.sendPasswordResetEmail(e).then(() => alert("E-mail enviado!")); }
+        function resetPassword() { const e = document.getElementById('userEmail').value; if(e) auth.sendPasswordResetEmail(e).then(() => alert("Confira seu e-mail!")); }
         function generateWarReport() { const s = document.getElementById('filterStart').value, e = document.getElementById('filterEnd').value; if(!s || !e) return alert("Datas!"); db.collection("reports").where("status", "==", "Aprovado").get().then(snap => { let ms = {}, to = 0, tp = 0; snap.forEach(doc => { const r = doc.data(), d = r.timestamp.toDate().toISOString().split('T')[0]; if(d >= s && d <= e) { to++; tp += r.points; ms[r.reporter] = (ms[r.reporter] || 0) + r.points; } }); if(to === 0) return alert("Sem registros!"); let l = `⚔️ **NEW ORDER AUDIT** ⚔️\n📅 **PERÍODO:** ${s} a ${e}\n📊 **TOTAL:** ${to} Ops | ${tp} pts\n\n🏆 **RANKING:**\n`; Object.entries(ms).sort((a,b)=>b[1]-a[1]).forEach(([n,p],i)=> l += `${i+1}. ${n}: ${p} pts\n`); navigator.clipboard.writeText(l).then(() => alert("COPIADO!")); }); }
     </script>
 </body>
