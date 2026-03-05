@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Order - KS Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #020617; color: #e2e8f0; font-family: 'Rajdhani', sans-serif; background-image: radial-gradient(circle at top right, #1e1b4b, transparent); }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; }
+        .neon-text-red { color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+        .logo-glow { filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6)); }
+        input, select, textarea { background: rgba(15, 23, 42, 0.9) !important; border: 1px solid #334155 !important; color: white !important; padding: 8px !important; border-radius: 6px !important; outline: none; font-size: 12px; }
+        
+        /* Ranking Colors */
+        .rank-1 { border-left: 4px solid #fbbf24 !important; color: #fbbf24; text-shadow: 0 0 8px rgba(251, 191, 36, 0.4); }
+        .rank-2 { border-left: 4px solid #cbd5e1 !important; color: #cbd5e1; }
+        .rank-3 { border-left: 4px solid #b45309 !important; color: #b45309; }
+
+        .priority-row { background: rgba(153, 27, 27, 0.2) !important; animation: pulse-red 2s infinite; border-left: 4px solid #ef4444 !important; }
+        @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 500; align-items: center; justify-content: center; }
+        
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background-color: #1e293b; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: #94a3b8; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #059669; }
+        input:checked + .slider:before { transform: translateX(20px); background-color: white; }
+    </style>
+</head>
+<body class="p-4 md:p-6">
+
+    <div id="zoomModal" onclick="this.style.display='none'" class="fixed inset-0 bg-black/95 z-[600] hidden justify-center items-center cursor-zoom-out">
+        <img id="modalImg" src="" style="max-width:90%; max-height:90%; border:2px solid #ef4444;">
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="glass p-6 w-full max-w-sm space-y-4 border-t-4 border-red-600">
+            <h3 class="text-xl font-bold uppercase text-red-500 italic">Analisar KS</h3>
+            <div>
+                <label class="text-[10px] uppercase font-bold text-slate-500">Decisão</label>
+                <select id="editStatus" class="w-full" onchange="toggleReasonField()">
+                    <option value="Pendente">Pendente</option>
+                    <option value="Aprovado">Aprovado</option>
+                    <option value="Recusado">Recusado</option>
+                </select>
+            </div>
+            <div id="reasonDiv" class="hidden">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Motivo da Recusa</label>
+                <textarea id="editReason" class="w-full h-20" placeholder="Explique o erro..."></textarea>
+            </div>
+            <div>
+                <label class="text-[10px] uppercase font-bold text-slate-500">Pontuação</label>
+                <input type="number" id="editPoints" class="w-full">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveEdit()" class="flex-1 bg-green-600 py-2 rounded font-bold uppercase text-xs">Confirmar</button>
+                <button onclick="closeModal('editModal')" class="flex-1 bg-slate-800 py-2 rounded font-bold uppercase text-xs">Sair</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-[1600px] mx-auto">
+        <div id="waitScreen" class="hidden max-w-md mx-auto mt-20 glass p-8 text-center border-t-4 border-yellow-600">
+            <h2 class="text-2xl font-bold text-yellow-500 mb-4 uppercase italic">Acesso Restrito</h2>
+            <p class="text-xs text-slate-400 mb-6">Aguarde a aprovação do Nando para entrar no sistema.</p>
+            <button onclick="logout()" class="text-blue-400 underline uppercase text-[10px]">Sair da Conta</button>
+        </div>
+
+        <div id="loginSection" class="max-w-md mx-auto mt-10 glass p-10 text-center border-t-4 border-red-600 shadow-2xl">
+            <img src="logoneworder.png" class="w-32 mx-auto mb-4 logo-glow">
+            <h2 class="text-3xl font-bold mb-8 neon-text-red uppercase italic">New Order</h2>
+            <div class="space-y-4">
+                <input type="email" id="userEmail" placeholder="E-mail" class="w-full">
+                <input type="password" id="userPass" placeholder="Senha" class="w-full">
+                <div id="registerFields" class="hidden"><input type="text" id="userNickRegister" placeholder="Nick do Personagem" class="w-full"></div>
+                <button id="mainBtn" onclick="handleAuth()" class="w-full bg-red-600 py-4 rounded font-bold text-white uppercase hover:bg-red-500 transition">Entrar</button>
+                <div class="flex justify-between text-[10px] font-bold text-slate-500 uppercase cursor-pointer">
+                    <span onclick="toggleAuthMode()" id="toggleBtn">Criar Nova Conta</span>
+                    <span onclick="resetPassword()">Recuperar Senha</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="dashboard" class="hidden">
+            <header class="flex flex-col xl:flex-row justify-between items-center mb-8 pb-6 border-b border-slate-800 gap-6">
+                <div class="flex items-center gap-5">
+                    <img src="logoneworder.png" class="w-16 h-16 object-contain logo-glow">
+                    <div>
+                        <h1 class="text-4xl font-bold neon-text-red uppercase italic leading-none">New Order</h1>
+                        <div class="flex items-center gap-3 mt-1">
+                            <p id="welcomeMsg" class="text-blue-400 font-bold text-xs uppercase italic border-r border-slate-700 pr-3 leading-none"></p>
+                            <div class="flex items-center gap-2">
+                                <span id="statusLabel" class="text-[8px] font-bold uppercase text-slate-500">Offline</span>
+                                <label class="switch"><input type="checkbox" id="statusToggle" onchange="toggleOnlineStatus()"><span class="slider"></span></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass p-3 border-slate-700 border min-w-[240px]">
+                    <h3 class="text-[9px] font-bold text-slate-500 uppercase mb-2 italic border-b border-slate-800/50 pb-1">Operadores Online:</h3>
+                    <div id="onlineList" class="flex flex-wrap gap-2 text-[10px] font-bold uppercase italic text-green-400"></div>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <div class="adm-tool hidden flex gap-2">
+                        <input type="date" id="filterStart" class="h-8">
+                        <input type="date" id="filterEnd" class="h-8">
+                        <button onclick="generateWarReport()" class="bg-indigo-600 hover:bg-indigo-500 text-[10px] px-4 rounded-full font-bold uppercase transition">Relatório</button>
+                    </div>
+                    <button onclick="showUserPanel()" class="adm-tool hidden bg-slate-700 hover:bg-slate-600 text-[10px] px-6 rounded-full font-bold uppercase transition">Membros</button>
+                    <button onclick="logout()" class="bg-slate-800 hover:bg-red-900 text-[10px] px-6 rounded-full font-bold uppercase transition border border-slate-700">Sair</button>
+                </div>
+            </header>
+
+            <div id="userPanel" class="hidden mb-10 glass p-6 border-blue-500/30 text-white">
+                <table class="w-full text-left text-xs"><tbody id="usersTableBody"></tbody></table>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-3 space-y-6">
+                    <div class="glass p-6 border-l-4 border-red-600 shadow-xl">
+                        <h2 class="text-md font-bold mb-6 text-red-500 uppercase italic border-b border-red-900/20 pb-2 tracking-widest">Reportar KS</h2>
+                        <div class="space-y-4">
+                            <input type="text" id="enemyName" placeholder="Nick Inimigo" class="w-full uppercase">
+                            <input type="text" id="respawn" placeholder="Hunt / Local" class="w-full">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="time" id="timeStart" class="w-full">
+                                <input type="time" id="timeEnd" class="w-full">
+                            </div>
+                            <div class="p-3 bg-slate-900/50 rounded-lg border border-slate-700 space-y-2">
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">Evidências</label>
+                                <input type="file" id="imgStart" accept="image/*" class="text-[9px] w-full">
+                                <input type="file" id="imgEnd" accept="image/*" class="text-[9px] w-full">
+                            </div>
+                            <button id="sendBtn" onclick="sendReport()" class="w-full bg-green-600 hover:bg-green-700 py-3 rounded font-bold uppercase text-xs shadow-lg transition">Transmitir KS</button>
+                        </div>
+                    </div>
+                    <div class="glass p-5">
+                        <h2 class="text-[10px] font-bold text-yellow-500 uppercase border-b border-yellow-900/30 pb-2 mb-4 tracking-widest">Top 10 Operadores</h2>
+                        <div id="ranking" class="space-y-3"></div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-6">
+                    <div class="glass p-6 min-h-[600px] shadow-2xl">
+                        <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+                            <h2 class="text-xl font-bold uppercase text-slate-400 italic">Mural de Operações</h2>
+                            <input type="text" id="searchEnemy" oninput="loadReports()" placeholder="FILTRAR MURAL..." class="text-[10px] w-48 glass uppercase">
+                        </div>
+                        <div class="overflow-x-auto text-white">
+                            <table class="w-full text-left text-xs">
+                                <thead class="text-slate-600 uppercase border-b border-slate-800 font-bold italic">
+                                    <tr><th class="p-4">Data</th><th class="p-4">Alvo/Local</th><th class="p-4">Nick</th><th class="p-4 text-center">Pts</th><th class="p-4 text-center">Prints</th><th class="p-4 text-right adm-tool hidden">Ações</th></tr>
+                                </thead>
+                                <tbody id="reportsBody" class="divide-y divide-slate-800/50"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3">
+                    <div class="glass p-6 shadow-2xl border-t-2 border-red-900/50">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-bold uppercase text-red-600 italic">Lista Hunted</h2>
+                            <button onclick="toggleHuntedForm()" class="adm-tool hidden bg-red-600 px-3 py-1 rounded font-bold shadow-lg">+</button>
+                        </div>
+                        <input type="text" id="searchHunted" oninput="loadHunteds()" placeholder="BUSCAR POR NICK, LVL OU VOC..." class="text-[10px] px-3 py-2 w-full glass mb-4 uppercase">
+                        <div id="huntedForm" class="hidden mb-6 p-4 bg-slate-900/50 rounded-lg space-y-3">
+                            <input type="text" id="hNick" placeholder="Nick" class="w-full text-xs">
+                            <input type="number" id="hLevel" placeholder="Level" class="w-full text-xs">
+                            <select id="hVoc" class="w-full text-xs">
+                                <option value="EK">EK</option><option value="ED">ED</option><option value="MS">MS</option><option value="RP">RP</option><option value="Monk">Monk</option>
+                            </select>
+                            <button onclick="addHunted()" class="w-full bg-green-600 py-2 rounded font-bold uppercase text-[10px]">Adicionar</button>
+                        </div>
+                        <div class="overflow-x-auto text-white">
+                            <table class="w-full text-left text-[11px]">
+                                <thead class="text-slate-600 uppercase font-bold border-b border-slate-800">
+                                    <tr><th>Nick</th><th>Lvl</th><th>Voc</th><th class="adm-tool hidden text-right">Ação</th></tr>
+                                </thead>
+                                <tbody id="huntedBody" class="divide-y divide-slate-800/50"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBfaLwifXIROIamUTQ0I4fakdbwAeHMWXU",
+            authDomain: "lastdance-ks.firebaseapp.com",
+            projectId: "lastdance-ks",
+            storageBucket: "lastdance-ks.firebasestorage.app",
+            messagingSenderId: "908930111088",
+            appId: "1:908930111088:web:a80f636a32b7a3ce1906b5",
+            databaseURL: "https://lastdance-ks-default-rtdb.firebaseio.com"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth(); const db = firebase.firestore(); const storage = firebase.storage(); const rtdb = firebase.database();
+
+        let currentUID = "", currentNick = "", isAdmin = false, isRegisterMode = false, currentReportId = "", priorityAlvos = [];
+
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUID = user.uid;
+                const doc = await db.collection("users").doc(user.uid).get();
+                if (doc.exists) {
+                    const ud = doc.data();
+                    if (ud.status === "pendente" && ud.role !== "admin") {
+                        document.getElementById('loginSection').classList.add('hidden');
+                        document.getElementById('waitScreen').classList.remove('hidden');
+                        return;
+                    }
+                    currentNick = ud.nick; isAdmin = ud.role === "admin";
+                    document.getElementById('dashboard').classList.remove('hidden');
+                    document.getElementById('loginSection').classList.add('hidden');
+                    document.getElementById('welcomeMsg').innerText = `MASTER: ${currentNick}`;
+                    
+                    db.collection("users").doc(currentUID).onSnapshot(s => {
+                        const on = s.data()?.isOnline || false;
+                        document.getElementById('statusToggle').checked = on;
+                        document.getElementById('statusLabel').innerText = on ? "Online" : "Offline";
+                        document.getElementById('statusLabel').className = on ? "text-[8px] font-bold uppercase text-green-500" : "text-[8px] font-bold uppercase text-slate-500";
+                    });
+
+                    db.collection("hunteds").where("priority", "==", true).onSnapshot(s => {
+                        priorityAlvos = s.docs.map(d => d.data().nick.toUpperCase());
+                        loadReports();
+                    });
+
+                    monitorOnline();
+                    if(isAdmin) { document.querySelectorAll('.adm-tool').forEach(t => t.classList.remove('hidden')); loadUsers(); cleanupOldReports(); }
+                    loadReports(); loadHunteds();
+                } else if (!isRegisterMode) { auth.signOut(); }
+            } else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('dashboard').classList.add('hidden'); }
+        });
+
+        // MURAL E FILTROS
+        function loadReports() {
+            const search = document.getElementById('searchEnemy').value.toUpperCase();
+            db.collection("reports").orderBy("timestamp", "desc").onSnapshot(snap => {
+                const tbody = document.getElementById('reportsBody'); tbody.innerHTML = ""; let sc = {};
+                snap.forEach(doc => {
+                    const r = doc.data(); if(r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
+                    const priority = priorityAlvos.includes(r.enemy.toUpperCase());
+                    const vis = isAdmin || r.status !== "Pendente" || r.reporter === currentNick;
+                    if (vis && (!search || r.enemy.includes(search) || r.respawn?.toUpperCase().includes(search))) {
+                        tbody.innerHTML += `<tr class="hover:bg-slate-800/30 ${priority?'priority-row':''}">
+                            <td class="p-4 text-[9px] italic font-bold text-slate-500">${r.timestamp?.toDate().toLocaleDateString() || '...'}</td>
+                            <td class="p-4"><div class="font-bold text-red-500 uppercase">${r.enemy}</div><div class="text-[9px] text-slate-400 italic">${r.respawn || ''}</div></td>
+                            <td class="p-4 font-bold uppercase italic">${r.reporter}</td>
+                            <td class="p-4 font-bold text-yellow-500 text-center">${r.points} pts<br><span class="text-[8px] uppercase ${r.status==='Recusado'?'text-red-500':'text-blue-400'}">${r.status}</span></td>
+                            <td class="p-4 text-center">
+                                <button onclick="openZoom('${r.imgStart}')" class="text-blue-500 text-[10px] underline">P1</button>
+                                ${r.imgEnd?`<button onclick="openZoom('${r.imgEnd}')" class="text-blue-500 text-[10px] underline ml-2">P2</button>`:''}
+                                ${r.reason ? `<div class="text-[8px] text-red-400 italic mt-1">Negado: ${r.reason}</div>` : ''}
+                            </td>
+                            <td class="p-4 text-right adm-tool ${isAdmin?'':'hidden'}">
+                                <button onclick="openEditModal('${doc.id}', '${r.status}', ${r.points}, '${r.reason||''}')" class="text-white hover:text-red-500">✎</button>
+                            </td>
+                        </tr>`;
+                    }
+                });
+                renderRanking(sc);
+            });
+        }
+
+        // RANKING TURBINADO
+        function renderRanking(sc) {
+            const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0, 10);
+            document.getElementById('ranking').innerHTML = sorted.map(([n, p], i) => {
+                let rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+                return `<div class="flex justify-between p-3 glass text-xs shadow-md ${rankClass}"><span><b>${i+1}.</b> ${n}</span><span class="font-black">${p} pts</span></div>`;
+            }).join('');
+        }
+
+        // HUNTEDS E REMOÇÃO
+        function loadHunteds() {
+            const search = document.getElementById('searchHunted').value.toUpperCase();
+            db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => {
+                const tbody = document.getElementById('huntedBody'); tbody.innerHTML = "";
+                snap.forEach(doc => {
+                    const h = doc.data();
+                    if(!search || h.nick.includes(search) || h.lvl?.toString().includes(search) || h.voc?.toUpperCase().includes(search)) {
+                        tbody.innerHTML += `<tr>
+                            <td class="py-2 font-bold uppercase ${h.priority?'text-yellow-500':'text-red-500'}">${h.priority?'⭐ ':''}${h.nick}</td>
+                            <td class="py-2 text-slate-400 italic font-bold">${h.lvl || '--'}</td>
+                            <td class="py-2 text-blue-400 font-bold">${h.voc || '--'}</td>
+                            <td class="py-2 text-right adm-tool ${isAdmin?'':'hidden'}">
+                                <button onclick="db.collection('hunteds').doc('${doc.id}').update({priority:!${h.priority||false}})" class="text-slate-500 hover:text-yellow-500 mr-2">⭐</button>
+                                <button onclick="if(confirm('Remover?'))db.collection('hunteds').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button>
+                            </td>
+                        </tr>`;
+                    }
+                });
+            });
+        }
+
+        // RELATÓRIO / INFORMATIVO
+        function generateWarReport() {
+            const s = document.getElementById('filterStart').value, e = document.getElementById('filterEnd').value;
+            if(!s || !e) return alert("Selecione as datas!");
+            db.collection("reports").where("status", "==", "Aprovado").get().then(snap => {
+                let ms = {}, to = 0, tp = 0;
+                snap.forEach(doc => {
+                    const r = doc.data(), d = r.timestamp.toDate().toISOString().split('T')[0];
+                    if(d >= s && d <= e) {
+                        to++; tp += r.points;
+                        ms[r.reporter] = (ms[r.reporter] || 0) + r.points;
+                    }
+                });
+                if(to === 0) return alert("Sem registros neste período.");
+                let l = `⚔️ **NEW ORDER - AUDITORIA KS** ⚔️\n📅 **PERÍODO:** ${s} a ${e}\n📊 **TOTAL:** ${to} KS | ${tp} pts\n\n🏆 **DESEMPENHO:**\n`;
+                Object.entries(ms).sort((a,b)=>b[1]-a[1]).forEach(([n,p],i)=> l += `${i+1}. ${n}: ${p} pts\n`);
+                l += `\n💪 *Sangue e Glória!*`;
+                navigator.clipboard.writeText(l).then(() => alert("RELATÓRIO COPIADO!"));
+            });
+        }
+
+        // SISTEMA (MANTIDO)
+        function loadUsers() {
+            db.collection("users").onSnapshot(snap => {
+                const tbody = document.getElementById('usersTableBody'); tbody.innerHTML = "";
+                snap.forEach(doc => {
+                    const u = doc.data(); const isP = u.status === 'pendente';
+                    tbody.innerHTML += `<tr class="border-b border-slate-800/50"><td class="p-2 font-bold uppercase italic">${u.nick}</td><td class="p-2"><span class="text-[9px] uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-[7px] ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td><td class="p-2 text-right space-x-1">${isP?`<button onclick="db.collection('users').doc('${doc.id}').update({status:'aprovado'})" class="bg-green-600 px-2 py-1 rounded text-[9px] font-bold">OK</button>`:''}<button onclick="db.collection('users').doc('${doc.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-2 py-1 rounded text-[9px] font-bold">CARGO</button><button onclick="if(confirm('Banir?'))db.collection('users').doc('${doc.id}').delete()" class="bg-red-900 px-2 py-1 rounded text-[9px] font-bold">X</button></td></tr>`;
+                });
+            });
+        }
+        async function sendReport() { const btn = document.getElementById('sendBtn'); const f1 = document.getElementById('imgStart').files[0]; const en = document.getElementById('enemyName').value; if(!f1 || !en) return alert("Nick e Print 1!"); btn.innerText = "..."; try { const u1 = await upload(f1); const u2 = await upload(document.getElementById('imgEnd').files[0]); await db.collection("reports").add({ enemy: en.toUpperCase(), respawn: document.getElementById('respawn').value, reporter: currentNick, timeS: document.getElementById('timeStart').value, timeE: document.getElementById('timeEnd').value, imgStart: u1, imgEnd: u2, status: "Pendente", points: 0, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); alert("Enviado!"); location.reload(); } catch(e){ btn.innerText = "Transmitir"; } }
+        async function upload(f) { if(!f) return null; const ref = storage.ref(`provas/${Date.now()}_${f.name}`); await ref.put(f); return await ref.getDownloadURL(); }
+        async function toggleOnlineStatus() { const s = document.getElementById('statusToggle').checked; await db.collection("users").doc(currentUID).update({ isOnline: s }); await rtdb.ref('/status/'+currentUID).update({ isOnline: s, nick: currentNick }); }
+        function monitorOnline() { db.collection("users").where("isOnline", "==", true).onSnapshot(snap => { const div = document.getElementById('onlineList'); div.innerHTML = ""; snap.forEach(doc => { div.innerHTML += `<span class="bg-slate-800 px-2 py-1 rounded border border-green-500/20 text-green-400">● ${doc.data().nick}</span>`; }); }); }
+        function openEditModal(id, status, points, reason) { currentReportId = id; document.getElementById('editStatus').value = status; document.getElementById('editPoints').value = points; document.getElementById('editReason').value = reason; toggleReasonField(); document.getElementById('editModal').style.display = 'flex'; }
+        function toggleReasonField() { document.getElementById('reasonDiv').style.display = document.getElementById('editStatus').value === 'Recusado' ? 'block' : 'none'; }
+        async function saveEdit() { await db.collection("reports").doc(currentReportId).update({ status: document.getElementById('editStatus').value, points: parseInt(document.getElementById('editPoints').value), reason: document.getElementById('editStatus').value === 'Recusado' ? document.getElementById('editReason').value : "" }); closeModal('editModal'); }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        async function addHunted() { const n = document.getElementById('hNick').value.toUpperCase(); const l = document.getElementById('hLevel').value; const v = document.getElementById('hVoc').value; if(!n || !l) return; await db.collection("hunteds").add({ nick: n, lvl: l, voc: v, priority: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); toggleHuntedForm(); }
+        function toggleAuthMode() { isRegisterMode = !isRegisterMode; document.getElementById('registerFields').classList.toggle('hidden'); document.getElementById('mainBtn').innerText = isRegisterMode ? "Cadastrar" : "Entrar"; }
+        async function handleAuth() { const email = document.getElementById('userEmail').value; const pass = document.getElementById('userPass').value; const nick = document.getElementById('userNickRegister').value; const btn = document.getElementById('mainBtn'); if(!email || !pass) return; btn.innerText = "..."; try { if (isRegisterMode) { const res = await auth.createUserWithEmailAndPassword(email, pass); await db.collection("users").doc(res.user.uid).set({ nick, email, role: "member", status: "pendente", isOnline: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); alert("Aguarde aprovação!"); location.reload(); } else { await auth.signInWithEmailAndPassword(email, pass); } } catch (e) { alert(e.message); btn.innerText = "Entrar"; } }
+        function logout() { auth.signOut(); location.reload(); }
+        function showUserPanel() { document.getElementById('userPanel').classList.toggle('hidden'); }
+        function toggleHuntedForm() { document.getElementById('huntedForm').classList.toggle('hidden'); }
+        function openZoom(u) { document.getElementById('modalImg').src = u; document.getElementById('zoomModal').style.display = 'flex'; }
+        async function cleanupOldReports() { const limit = new Date(); limit.setDate(limit.getDate() - 30); const snap = await db.collection("reports").where("timestamp", "<", limit).get(); snap.forEach(async (doc) => { await db.collection("reports").doc(doc.id).delete(); }); }
+        function resetPassword() { const e = document.getElementById('userEmail').value; if(e) auth.sendPasswordResetEmail(e).then(() => alert("Confira seu e-mail!")); }
+    </script>
+</body>
+</html>
