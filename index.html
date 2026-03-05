@@ -17,11 +17,11 @@
         .neon-text-red { color: #ef4444; text-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
         .logo-glow { filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.9)); }
         input, select, textarea { background: rgba(15, 23, 42, 0.9) !important; border: 2px solid #334155 !important; color: white !important; padding: 14px !important; border-radius: 12px !important; outline: none; font-size: 16px !important; width: 100%; }
-        
+       
         .rank-1 { border-left: 6px solid #fbbf24 !important; color: #fbbf24; text-shadow: 0 0 12px rgba(251, 191, 36, 0.4); }
         .rank-2 { border-left: 6px solid #cbd5e1 !important; color: #cbd5e1; }
         .rank-3 { border-left: 6px solid #b45309 !important; color: #b45309; }
-        
+       
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
         .switch { position: relative; display: inline-block; width: 54px; height: 28px; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -29,10 +29,9 @@
         .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 2px; background-color: #94a3b8; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: #059669; border-color: #10b981; }
         input:checked + .slider:before { transform: translateX(26px); background-color: white; }
-        
+       
         #onlineList { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 100px; overflow-y: auto; padding: 5px; }
         @media (max-width: 1024px) { #onlineList { grid-template-columns: repeat(2, 1fr); } }
-
         @media (max-width: 768px) {
             h1 { font-size: 2.5rem !important; }
             .logo-header { width: 80px !important; height: 80px !important; }
@@ -40,7 +39,6 @@
             th, td { padding: 12px !important; font-size: 14px; }
             .adm-tool.flex { flex-direction: column; width: 100%; }
         }
-
         .paste-btn-active { border: 2px solid #ef4444 !important; background: rgba(239, 68, 68, 0.2) !important; color: #ef4444 !important; }
         .pending-alert { animation: pulse-yellow 1.5s infinite !important; background-color: #eab308 !important; color: black !important; }
         @keyframes pulse-yellow { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
@@ -115,12 +113,10 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="glass p-5 border-slate-700 border-2 min-w-full md:min-w-[380px] shadow-lg">
-                    <h3 class="text-sm font-bold text-slate-500 uppercase mb-3 italic border-b-2 border-slate-800/50 pb-2">Online:</h3>
+                    <h3 class="text-sm font-bold text-slate-500 uppercase mb-3 italic border-b-2 border-slate-800/50 pb-2">Ativo no KS:</h3>
                     <div id="onlineList"></div>
                 </div>
-
                 <div class="flex flex-wrap justify-center gap-4">
                     <div class="adm-tool hidden flex gap-4">
                         <input type="date" id="filterStart" class="h-12 w-32 md:w-auto">
@@ -152,12 +148,12 @@
                             </div>
                             <div class="p-4 md:p-6 bg-slate-900/50 rounded-xl border-2 border-slate-700 space-y-5">
                                 <div class="space-y-3">
-                                    <label class="text-xs font-bold text-slate-500 uppercase">Print 1</label>
+                                    <label class="text-xs font-bold text-slate-500 uppercase">Print 1 (obrigatório)</label>
                                     <input type="file" id="imgStart" accept="image/*" class="text-xs">
                                     <button id="btnPaste1" onclick="handlePasteAction('imgStart', this)" class="w-full bg-slate-800 border-2 border-slate-600 py-3 rounded-lg font-bold uppercase text-[10px] hover:border-red-500 transition shadow-lg">Colar (Ctrl+V)</button>
                                 </div>
                                 <div class="space-y-3">
-                                    <label class="text-xs font-bold text-slate-500 uppercase">Print 2</label>
+                                    <label class="text-xs font-bold text-slate-500 uppercase">Print 2 (opcional)</label>
                                     <input type="file" id="imgEnd" accept="image/*" class="text-xs">
                                     <button id="btnPaste2" onclick="handlePasteAction('imgEnd', this)" class="w-full bg-slate-800 border-2 border-slate-600 py-3 rounded-lg font-bold uppercase text-[10px] hover:border-red-500 transition shadow-lg">Colar (Ctrl+V)</button>
                                 </div>
@@ -200,7 +196,7 @@
                 <div class="lg:col-span-3 order-3 lg:order-3">
                     <div class="glass p-6 md:p-10 shadow-2xl border-t-4 border-red-900/50">
                         <div class="flex justify-between items-center mb-8">
-                            <h2 class="text-2xl md:text-3xl font-bold uppercase text-red-600 italic">Hunted</h2>
+                            <h2 class="text-2xl md:text-3xl font-bold uppercase text-red-600 italic">Hunted List</h2>
                             <button onclick="toggleHuntedForm()" class="adm-tool hidden bg-red-600 px-4 py-2 rounded-lg font-bold shadow-lg text-2xl">+</button>
                         </div>
                         <input type="text" id="searchHunted" oninput="loadHunteds()" placeholder="FILTRAR..." class="w-full mb-8 glass uppercase">
@@ -234,16 +230,29 @@
             appId: "1:908930111088:web:a80f636a32b7a3ce1906b5",
             databaseURL: "https://lastdance-ks-default-rtdb.firebaseio.com"
         };
+
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth(); const db = firebase.firestore(); const storage = firebase.storage(); const rtdb = firebase.database();
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+        const rtdb = firebase.database();
 
-        let currentUID = "", currentNick = "", isAdmin = false, isRegisterMode = false, activeInputId = null, activeBtn = null, priorityAlvos = [];
+        let currentUID = "", currentNick = "", isAdmin = false, isRegisterMode = false;
+        let activeInputId = null, activeBtn = null, priorityAlvos = [];
+        let currentReportId = null;
 
-        function clearPrints() { document.getElementById('imgStart').value = ""; document.getElementById('imgEnd').value = ""; resetPasteButtons(); activeInputId = null; }
-        function resetPasteButtons() { 
-            const b1 = document.getElementById('btnPaste1'), b2 = document.getElementById('btnPaste2');
-            b1.innerText = "Colar (Ctrl+V)"; b1.classList.remove('paste-btn-active'); b1.style.background = ""; 
-            b2.innerText = "Colar (Ctrl+V)"; b2.classList.remove('paste-btn-active'); b2.style.background = ""; 
+        function clearPrints() {
+            document.getElementById('imgStart').value = "";
+            document.getElementById('imgEnd').value = "";
+            resetPasteButtons();
+            activeInputId = null;
+        }
+
+        function resetPasteButtons() {
+            const b1 = document.getElementById('btnPaste1');
+            const b2 = document.getElementById('btnPaste2');
+            b1.innerText = "Colar (Ctrl+V)"; b1.classList.remove('paste-btn-active');
+            b2.innerText = "Colar (Ctrl+V)"; b2.classList.remove('paste-btn-active');
         }
 
         async function handlePasteAction(inputId, btn) {
@@ -253,18 +262,36 @@
                     for (const type of item.types) {
                         if (type.startsWith('image/')) {
                             const blob = await item.getType(type);
-                            const dt = new DataTransfer(); dt.items.add(new File([blob], "paste.png", { type }));
+                            const dt = new DataTransfer();
+                            dt.items.add(new File([blob], "paste.png", { type }));
                             document.getElementById(inputId).files = dt.files;
-                            btn.innerText = "FOTO OK!"; btn.style.background = "#059669"; return;
+                            btn.innerText = "FOTO OK!";
+                            btn.style.background = "#059669";
+                            return;
                         }
                     }
                 }
                 activatePasteFallback(inputId, btn);
-            } catch (err) { activatePasteFallback(inputId, btn); }
+            } catch (err) {
+                activatePasteFallback(inputId, btn);
+            }
         }
-        function activatePasteFallback(inputId, btn) { resetPasteButtons(); activeInputId = inputId; activeBtn = btn; btn.classList.add('paste-btn-active'); btn.innerText = "AGUARDANDO CTRL+V..."; }
 
-        window.addEventListener('keydown', e => { if (e.key === 'Escape' && activeInputId) { resetPasteButtons(); activeInputId = null; } });
+        function activatePasteFallback(inputId, btn) {
+            resetPasteButtons();
+            activeInputId = inputId;
+            activeBtn = btn;
+            btn.classList.add('paste-btn-active');
+            btn.innerText = "AGUARDANDO CTRL+V...";
+        }
+
+        window.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && activeInputId) {
+                resetPasteButtons();
+                activeInputId = null;
+            }
+        });
+
         window.addEventListener('paste', e => {
             if (!activeInputId) return;
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
@@ -272,10 +299,13 @@
                 const item = items[index];
                 if (item.kind === 'file') {
                     const blob = item.getAsFile();
-                    const dt = new DataTransfer(); dt.items.add(blob);
+                    const dt = new DataTransfer();
+                    dt.items.add(blob);
                     document.getElementById(activeInputId).files = dt.files;
-                    activeBtn.innerText = "FOTO OK!"; activeBtn.classList.remove('paste-btn-active');
-                    activeBtn.style.background = "#059669"; activeInputId = null;
+                    activeBtn.innerText = "FOTO OK!";
+                    activeBtn.classList.remove('paste-btn-active');
+                    activeBtn.style.background = "#059669";
+                    activeInputId = null;
                 }
             }
         });
@@ -291,40 +321,58 @@
                         document.getElementById('waitScreen').classList.remove('hidden');
                         return;
                     }
-                    currentNick = ud.nick; isAdmin = ud.role === "admin";
+                    currentNick = ud.nick;
+                    isAdmin = ud.role === "admin";
                     document.getElementById('dashboard').classList.remove('hidden');
                     document.getElementById('loginSection').classList.add('hidden');
                     document.getElementById('welcomeMsg').innerText = `Nick: ${currentNick}`;
+                    
                     db.collection("users").doc(currentUID).onSnapshot(s => {
                         const on = s.data()?.isOnline || false;
                         document.getElementById('statusToggle').checked = on;
                         document.getElementById('statusLabel').innerText = on ? "Online" : "Offline";
                         document.getElementById('statusLabel').className = on ? "text-[10px] font-bold uppercase text-green-500" : "text-[10px] font-bold uppercase text-slate-500";
                     });
-                    db.collection("hunteds").where("priority", "==", true).onSnapshot(s => { priorityAlvos = s.docs.map(d => d.data().nick.toUpperCase()); loadReports(); });
+
+                    db.collection("hunteds").where("priority", "==", true).onSnapshot(s => {
+                        priorityAlvos = s.docs.map(d => d.data().nick.toUpperCase());
+                        loadReports();
+                    });
+
                     monitorOnline();
-                    if(isAdmin) { 
-                        document.querySelectorAll('.adm-tool').forEach(t => t.classList.remove('hidden')); 
-                        loadUsers(); 
-                        cleanupOldReports(); 
+
+                    if (isAdmin) {
+                        document.querySelectorAll('.adm-tool').forEach(t => t.classList.remove('hidden'));
+                        loadUsers();
+                        cleanupOldReports();
                         db.collection("users").where("status", "==", "pendente").onSnapshot(snap => {
                             const b = document.getElementById('memberManageBtn');
                             if (snap.size > 0) b.classList.add('pending-alert');
                             else b.classList.remove('pending-alert');
                         });
                     }
-                    loadReports(); loadHunteds();
+
+                    loadReports();
+                    loadHunteds();
                 }
-            } else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('dashboard').classList.add('hidden'); }
+            } else {
+                document.getElementById('loginSection').classList.remove('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+            }
         });
 
         function loadReports() {
-            const search = document.getElementById('searchEnemy').value.toUpperCase(), filter = document.getElementById('filterStatusMural').value;
+            const search = document.getElementById('searchEnemy').value.toUpperCase();
+            const filter = document.getElementById('filterStatusMural').value;
             db.collection("reports").orderBy("timestamp", "desc").onSnapshot(snap => {
-                const tbody = document.getElementById('reportsBody'); tbody.innerHTML = ""; let sc = {};
+                const tbody = document.getElementById('reportsBody');
+                tbody.innerHTML = "";
+                let sc = {};
                 snap.forEach(doc => {
-                    const r = doc.data(); if(r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
-                    const prio = priorityAlvos.includes(r.enemy.toUpperCase()), vis = isAdmin || r.status !== "Pendente" || r.reporter === currentNick;
+                    const r = doc.data();
+                    if (r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
+                    const prio = priorityAlvos.includes(r.enemy.toUpperCase());
+                    const vis = isAdmin || r.status !== "Pendente" || r.reporter === currentNick;
                     if (vis && (!search || r.enemy.includes(search) || r.respawn?.toUpperCase().includes(search)) && (filter === "Todos" || r.status === filter)) {
                         tbody.innerHTML += `<tr class="hover:bg-slate-800/30 ${prio?'priority-row':''}">
                             <td class="p-4 text-xs italic font-bold text-slate-500">${r.timestamp?.toDate().toLocaleDateString() || '...'}</td>
@@ -341,27 +389,312 @@
                 renderRanking(sc);
             });
         }
-        function renderRanking(sc) { const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0, 10); document.getElementById('ranking').innerHTML = sorted.map(([n, p], i) => `<div class="flex justify-between p-4 glass text-base shadow-md ${i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':''}"><span><b>${i+1}.</b> ${n}</span><span class="font-black">${p} pts</span></div>`).join(''); }
-        function loadHunteds() { const search = document.getElementById('searchHunted').value.toUpperCase(); db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => { const tbody = document.getElementById('huntedBody'); tbody.innerHTML = ""; snap.forEach(doc => { const h = doc.data(); if(!search || h.nick.includes(search) || h.lvl?.toString().includes(search) || h.voc?.toUpperCase().includes(search)) { tbody.innerHTML += `<tr class="border-b border-slate-800/50"><td class="py-4 font-bold uppercase text-lg ${h.priority?'text-yellow-500':'text-red-500'}">${h.priority?'⭐ ':''}${h.nick}</td><td class="py-4 text-slate-400 italic font-bold text-base text-center">${h.lvl || '--'}</td><td class="py-4 text-blue-400 font-bold text-base text-center">${h.voc || '--'}</td><td class="py-4 text-right adm-tool ${isAdmin?'':'hidden'}"><button onclick="db.collection('hunteds').doc('${doc.id}').update({priority:!${h.priority||false}})" class="text-slate-500 hover:text-yellow-500 mr-5">⭐</button><button onclick="if(confirm('Remover?'))db.collection('hunteds').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button></td></tr>`; } }); }); }
-        function loadUsers() { db.collection("users").onSnapshot(snap => { const tbody = document.getElementById('usersTableBody'); tbody.innerHTML = ""; snap.forEach(doc => { const u = doc.data(); const isP = u.status === 'pendente'; tbody.innerHTML += `<tr class="border-b border-slate-800/50"><td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td><td class="p-4"><span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td><td class="p-4 text-right space-x-4">${isP?`<button onclick="db.collection('users').doc('${doc.id}').update({status:'aprovado'})" class="bg-green-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">OK</button>`:''}<button onclick="db.collection('users').doc('${doc.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">CARGO</button><button onclick="if(confirm('Banir?'))db.collection('users').doc('${doc.id}').delete()" class="bg-red-900 px-4 py-2 rounded-xl font-bold uppercase text-sm">X</button></td></tr>`; }); }); }
-        async function handleAuth() { const email = document.getElementById('userEmail').value, pass = document.getElementById('userPass').value, nick = document.getElementById('userNickRegister').value, btn = document.getElementById('mainBtn'); if(!email || !pass) return alert("Preencha!"); btn.innerText = "..."; try { if (isRegisterMode) { const res = await auth.createUserWithEmailAndPassword(email, pass); await db.collection("users").doc(res.user.uid).set({ nick, email, role: "member", status: "pendente", isOnline: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); alert("Aguarde liberação!"); await auth.signOut(); location.reload(); } else { await auth.signInWithEmailAndPassword(email, pass); } } catch (e) { alert(e.message); btn.innerText = "Entrar"; } }
-        async function sendReport() { const btn = document.getElementById('sendBtn'); const en = document.getElementById('enemyName').value; if(!en) return alert("Nick Inimigo!"); btn.innerText = "..."; try { const u1 = await upload(document.getElementById('imgStart').files[0]), u2 = await upload(document.getElementById('imgEnd').files[0]); await db.collection("reports").add({ enemy: en.toUpperCase(), respawn: document.getElementById('respawn').value, reporter: currentNick, timeS: document.getElementById('timeStart').value, timeE: document.getElementById('timeEnd').value, imgStart: u1, imgEnd: u2, status: "Pendente", points: 0, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); alert("Enviado!"); location.reload(); } catch(e){ btn.innerText = "Transmitir KS"; } }
-        async function upload(f) { if(!f) return null; const ref = storage.ref(`provas/${Date.now()}_${f.name}`); await ref.put(f); return await ref.getDownloadURL(); }
-        async function toggleOnlineStatus() { const s = document.getElementById('statusToggle').checked; await db.collection("users").doc(currentUID).update({ isOnline: s }); await rtdb.ref('/status/'+currentUID).update({ isOnline: s, nick: currentNick }); }
-        function monitorOnline() { db.collection("users").where("isOnline", "==", true).onSnapshot(snap => { const div = document.getElementById('onlineList'); div.innerHTML = ""; snap.forEach(doc => { div.innerHTML += `<span class="bg-slate-800 px-4 py-2 rounded-lg border-2 border-green-500/20 text-green-400 shadow-sm text-sm">● ${doc.data().nick}</span>`; }); }); }
-        function openEditModal(id, status, points, reason) { currentReportId = id; document.getElementById('editStatus').value = status; document.getElementById('editPoints').value = points; document.getElementById('editReason').value = reason; toggleReasonField(); document.getElementById('editModal').style.display = 'flex'; }
-        function toggleReasonField() { document.getElementById('reasonDiv').style.display = document.getElementById('editStatus').value === 'Recusado' ? 'block' : 'none'; }
-        async function saveEdit() { await db.collection("reports").doc(currentReportId).update({ status: document.getElementById('editStatus').value, points: parseInt(document.getElementById('editPoints').value), reason: document.getElementById('editStatus').value === 'Recusado' ? document.getElementById('editReason').value : "" }); closeModal('editModal'); }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        async function addHunted() { const n = document.getElementById('hNick').value.toUpperCase(), l = document.getElementById('hLevel').value, v = document.getElementById('hVoc').value; if(!n || !l) return; await db.collection("hunteds").add({ nick: n, lvl: l, voc: v, priority: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); toggleHuntedForm(); }
-        function toggleAuthMode() { isRegisterMode = !isRegisterMode; document.getElementById('registerFields').classList.toggle('hidden'); document.getElementById('mainBtn').innerText = isRegisterMode ? "Cadastrar" : "Entrar"; }
-        function logout() { auth.signOut(); location.reload(); }
-        function showUserPanel() { document.getElementById('userPanel').classList.toggle('hidden'); }
-        function toggleHuntedForm() { document.getElementById('huntedForm').classList.toggle('hidden'); }
-        function openZoom(u) { document.getElementById('modalImg').src = u; document.getElementById('zoomModal').style.display = 'flex'; }
-        async function cleanupOldReports() { const limit = new Date(); limit.setDate(limit.getDate() - 30); const snap = await db.collection("reports").where("timestamp", "<", limit).get(); snap.forEach(async (doc) => { await db.collection("reports").doc(doc.id).delete(); }); }
-        function resetPassword() { const e = document.getElementById('userEmail').value; if(e) auth.sendPasswordResetEmail(e).then(() => alert("Confira seu e-mail!")); }
-        function generateWarReport() { const s = document.getElementById('filterStart').value, e = document.getElementById('filterEnd').value; if(!s || !e) return alert("Datas!"); db.collection("reports").where("status", "==", "Aprovado").get().then(snap => { let ms = {}, to = 0, tp = 0; snap.forEach(doc => { const r = doc.data(), d = r.timestamp.toDate().toISOString().split('T')[0]; if(d >= s && d <= e) { to++; tp += r.points; ms[r.reporter] = (ms[r.reporter] || 0) + r.points; } }); if(to === 0) return alert("Sem registros!"); let l = `⚔️ **NEW ORDER AUDIT** ⚔️\n📅 **PERÍODO:** ${s} a ${e}\n📊 **TOTAL:** ${to} Ops | ${tp} pts\n\n🏆 **RANKING:**\n`; Object.entries(ms).sort((a,b)=>b[1]-a[1]).forEach(([n,p],i)=> l += `${i+1}. ${n}: ${p} pts\n`); navigator.clipboard.writeText(l).then(() => alert("COPIADO!")); }); }
+
+        function renderRanking(sc) {
+            const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0, 10);
+            document.getElementById('ranking').innerHTML = sorted.map(([n, p], i) => 
+                `<div class="flex justify-between p-4 glass text-base shadow-md ${i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':''}">
+                    <span><b>${i+1}.</b> ${n}</span><span class="font-black">${p} pts</span>
+                </div>`
+            ).join('');
+        }
+
+        function loadHunteds() {
+            const search = document.getElementById('searchHunted').value.toUpperCase();
+            db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => {
+                const tbody = document.getElementById('huntedBody');
+                tbody.innerHTML = "";
+                snap.forEach(doc => {
+                    const h = doc.data();
+                    if (!search || h.nick.includes(search) || h.lvl?.toString().includes(search) || h.voc?.toUpperCase().includes(search)) {
+                        tbody.innerHTML += `<tr class="border-b border-slate-800/50">
+                            <td class="py-4 font-bold uppercase text-lg ${h.priority?'text-yellow-500':'text-red-500'}">${h.priority?'⭐ ':''}${h.nick}</td>
+                            <td class="py-4 text-slate-400 italic font-bold text-base text-center">${h.lvl || '--'}</td>
+                            <td class="py-4 text-blue-400 font-bold text-base text-center">${h.voc || '--'}</td>
+                            <td class="py-4 text-right adm-tool ${isAdmin?'':'hidden'}">
+                                <button onclick="db.collection('hunteds').doc('${doc.id}').update({priority:!${h.priority||false}})" class="text-slate-500 hover:text-yellow-500 mr-5">⭐</button>
+                                <button onclick="if(confirm('Remover?'))db.collection('hunteds').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button>
+                            </td>
+                        </tr>`;
+                    }
+                });
+            });
+        }
+
+        function loadUsers() {
+            db.collection("users").onSnapshot(snap => {
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = "";
+                snap.forEach(doc => {
+                    const u = doc.data();
+                    const isP = u.status === 'pendente';
+                    tbody.innerHTML += `<tr class="border-b border-slate-800/50">
+                        <td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td>
+                        <td class="p-4"><span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td>
+                        <td class="p-4 text-right space-x-4">
+                            ${isP?`<button onclick="db.collection('users').doc('${doc.id}').update({status:'aprovado'})" class="bg-green-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">OK</button>`:''}
+                            <button onclick="db.collection('users').doc('${doc.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">CARGO</button>
+                            <button onclick="if(confirm('Banir?'))db.collection('users').doc('${doc.id}').delete()" class="bg-red-900 px-4 py-2 rounded-xl font-bold uppercase text-sm">X</button>
+                        </td>
+                    </tr>`;
+                });
+            });
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById('userEmail').value;
+            const pass = document.getElementById('userPass').value;
+            const nick = document.getElementById('userNickRegister').value;
+            const btn = document.getElementById('mainBtn');
+            if (!email || !pass) return alert("Preencha e-mail e senha!");
+            btn.innerText = "...";
+            try {
+                if (isRegisterMode) {
+                    const res = await auth.createUserWithEmailAndPassword(email, pass);
+                    await db.collection("users").doc(res.user.uid).set({
+                        nick,
+                        email,
+                        role: "member",
+                        status: "pendente",
+                        isOnline: false,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    alert("Conta criada! Aguarde aprovação do administrador.");
+                    await auth.signOut();
+                    location.reload();
+                } else {
+                    await auth.signInWithEmailAndPassword(email, pass);
+                }
+            } catch (e) {
+                alert("Erro: " + e.message);
+            } finally {
+                btn.innerText = isRegisterMode ? "Cadastrar" : "Entrar";
+            }
+        }
+
+        async function upload(file) {
+            if (!file) return null;
+            const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+            const ref = storage.ref(`provas/${fileName}`);
+            try {
+                await ref.put(file);
+                return await ref.getDownloadURL();
+            } catch (e) {
+                console.error("Erro no upload:", e.code, e.message);
+                throw new Error("Falha no upload da imagem: " + (e.message || "verifique as regras do Storage"));
+            }
+        }
+
+        async function sendReport() {
+            const btn = document.getElementById('sendBtn');
+            const enemy = document.getElementById('enemyName').value.trim();
+            if (!enemy) return alert("Preencha o Nick do Inimigo!");
+
+            btn.innerText = "Enviando...";
+            btn.disabled = true;
+
+            try {
+                const imgStartFile = document.getElementById('imgStart').files[0];
+                if (!imgStartFile) throw new Error("Envie pelo menos o Print 1!");
+
+                const u1 = await upload(imgStartFile);
+                const u2 = await upload(document.getElementById('imgEnd').files[0] || null);
+
+                await db.collection("reports").add({
+                    enemy: enemy.toUpperCase(),
+                    respawn: document.getElementById('respawn').value.trim(),
+                    reporter: currentNick,
+                    timeS: document.getElementById('timeStart').value,
+                    timeE: document.getElementById('timeEnd').value,
+                    imgStart: u1,
+                    imgEnd: u2 || null,
+                    status: "Pendente",
+                    points: 0,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                alert("KS enviado com sucesso! Aguarde aprovação.");
+                
+                // Limpa o formulário
+                document.getElementById('enemyName').value = '';
+                document.getElementById('respawn').value = '';
+                document.getElementById('timeStart').value = '';
+                document.getElementById('timeEnd').value = '';
+                document.getElementById('imgStart').value = '';
+                document.getElementById('imgEnd').value = '';
+                clearPrints();
+
+                // Recarrega para atualizar o mural
+                location.reload();
+
+            } catch (e) {
+                console.error("Erro completo ao enviar:", e);
+                let msg = e.message || "Tente novamente";
+                if (msg.includes("permission") || msg.includes("403")) {
+                    msg = "Permissão negada. Verifique as regras do Firebase (Firestore e Storage).";
+                }
+                alert("Erro ao enviar KS:\n" + msg + "\n\nVeja o console (F12) para mais detalhes.");
+            } finally {
+                btn.innerText = "Transmitir KS";
+                btn.disabled = false;
+            }
+        }
+
+        async function toggleOnlineStatus() {
+            const s = document.getElementById('statusToggle').checked;
+            await db.collection("users").doc(currentUID).update({ isOnline: s });
+            await rtdb.ref('/status/' + currentUID).update({ isOnline: s, nick: currentNick });
+        }
+
+        function monitorOnline() {
+            db.collection("users").where("isOnline", "==", true).onSnapshot(snap => {
+                const div = document.getElementById('onlineList');
+                div.innerHTML = "";
+                snap.forEach(doc => {
+                    div.innerHTML += `<span class="bg-slate-800 px-4 py-2 rounded-lg border-2 border-green-500/20 text-green-400 shadow-sm text-sm">● ${doc.data().nick}</span>`;
+                });
+            });
+        }
+
+        function openEditModal(id, status, points, reason) {
+            currentReportId = id;
+            document.getElementById('editStatus').value = status;
+            document.getElementById('editPoints').value = points || 0;
+            document.getElementById('editReason').value = reason || '';
+            toggleReasonField();
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function toggleReasonField() {
+            const status = document.getElementById('editStatus').value;
+            document.getElementById('reasonDiv').style.display = status === 'Recusado' ? 'block' : 'none';
+        }
+
+        async function saveEdit() {
+            const status = document.getElementById('editStatus').value;
+            const points = parseInt(document.getElementById('editPoints').value) || 0;
+            const reason = status === 'Recusado' ? document.getElementById('editReason').value.trim() : "";
+            
+            try {
+                await db.collection("reports").doc(currentReportId).update({
+                    status,
+                    points,
+                    reason
+                });
+                alert("Atualizado com sucesso!");
+                closeModal('editModal');
+            } catch (e) {
+                alert("Erro ao salvar: " + e.message);
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        async function addHunted() {
+            const n = document.getElementById('hNick').value.trim().toUpperCase();
+            const l = parseInt(document.getElementById('hLevel').value);
+            const v = document.getElementById('hVoc').value;
+            if (!n || isNaN(l)) return alert("Preencha nick e level!");
+            try {
+                await db.collection("hunteds").add({
+                    nick: n,
+                    lvl: l,
+                    voc: v,
+                    priority: false,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                toggleHuntedForm();
+                alert("Hunted adicionado!");
+            } catch (e) {
+                alert("Erro: " + e.message);
+            }
+        }
+
+        function toggleAuthMode() {
+            isRegisterMode = !isRegisterMode;
+            document.getElementById('registerFields').classList.toggle('hidden');
+            document.getElementById('mainBtn').innerText = isRegisterMode ? "Cadastrar" : "Entrar";
+            document.getElementById('toggleBtn').innerText = isRegisterMode ? "Já tenho conta" : "Criar Nova Conta";
+        }
+
+        function logout() {
+            auth.signOut();
+            location.reload();
+        }
+
+        function showUserPanel() {
+            document.getElementById('userPanel').classList.toggle('hidden');
+        }
+
+        function toggleHuntedForm() {
+            document.getElementById('huntedForm').classList.toggle('hidden');
+        }
+
+        function openZoom(url) {
+            document.getElementById('modalImg').src = url;
+            document.getElementById('zoomModal').style.display = 'flex';
+        }
+
+        async function cleanupOldReports() {
+            if (!isAdmin) return;
+            const limit = new Date();
+            limit.setDate(limit.getDate() - 30);
+            try {
+                const snap = await db.collection("reports")
+                    .where("timestamp", "<", firebase.firestore.Timestamp.fromDate(limit))
+                    .get();
+                const batch = db.batch();
+                snap.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            } catch (e) {
+                console.error("Erro na limpeza:", e);
+            }
+        }
+
+        function resetPassword() {
+            const email = document.getElementById('userEmail').value.trim();
+            if (!email) return alert("Digite o e-mail primeiro!");
+            auth.sendPasswordResetEmail(email)
+                .then(() => alert("Link de reset enviado! Confira seu e-mail."))
+                .catch(e => alert("Erro: " + e.message));
+        }
+
+        function generateWarReport() {
+            const start = document.getElementById('filterStart').value;
+            const end = document.getElementById('filterEnd').value;
+            if (!start || !end) return alert("Selecione as datas!");
+            
+            db.collection("reports")
+                .where("status", "==", "Aprovado")
+                .get()
+                .then(snap => {
+                    let members = {};
+                    let totalOps = 0;
+                    let totalPoints = 0;
+                    snap.forEach(doc => {
+                        const r = doc.data();
+                        const date = r.timestamp?.toDate().toISOString().split('T')[0];
+                        if (date >= start && date <= end) {
+                            totalOps++;
+                            totalPoints += r.points || 0;
+                            members[r.reporter] = (members[r.reporter] || 0) + (r.points || 0);
+                        }
+                    });
+                    if (totalOps === 0) return alert("Nenhum KS aprovado nesse período.");
+                    
+                    let text = `⚔️ NEW ORDER AUDIT ⚔️\n📅 Período: ${start} a ${end}\n📊 Total: ${totalOps} operações | ${totalPoints} pts\n\n🏆 Ranking:\n`;
+                    Object.entries(members)
+                        .sort((a,b) => b[1] - a[1])
+                        .forEach(([nick, pts], i) => {
+                            text += `${i+1}. ${nick}: ${pts} pts\n`;
+                        });
+                    
+                    navigator.clipboard.writeText(text).then(() => alert("Relatório copiado para a área de transferência!"));
+                })
+                .catch(e => alert("Erro ao gerar relatório: " + e.message));
+        }
     </script>
 </body>
 </html>
