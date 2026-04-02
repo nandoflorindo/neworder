@@ -143,6 +143,13 @@
                 </div>
             </header>
 
+            <div id="userPanel" class="hidden mb-10 glass p-6 md:p-10 border-blue-500/30 text-white shadow-2xl overflow-x-auto">
+                <table class="w-full text-left min-w-[500px]">
+                    <thead><tr class="text-slate-500 uppercase text-xs border-b-2 border-slate-800"><th class="pb-5">Nick</th><th class="pb-5">Cargo/Status</th><th class="pb-5 text-right">Ações</th></tr></thead>
+                    <tbody id="usersTableBody"></tbody>
+                </table>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 <div class="lg:col-span-3 space-y-10 order-2 lg:order-1">
                     <div class="glass p-6 md:p-10 border-l-8 border-red-600 shadow-2xl">
@@ -215,8 +222,21 @@
 
                 <div class="lg:col-span-3 order-3 lg:order-3">
                     <div class="glass p-6 md:p-10 shadow-2xl border-t-4 border-red-900/50">
-                        <h2 class="text-2xl md:text-3xl font-bold uppercase text-red-600 italic mb-8">Hunted List</h2>
+                        <div class="flex justify-between items-center mb-8">
+                            <h2 class="text-2xl md:text-3xl font-bold uppercase text-red-600 italic">Hunted List</h2>
+                            <button onclick="toggleHuntedForm()" class="adm-tool hidden bg-red-600 px-4 py-2 rounded-lg font-bold shadow-lg text-2xl">+</button>
+                        </div>
                         <input type="text" id="searchHunted" oninput="loadHunteds()" placeholder="FILTRAR..." class="w-full mb-8 glass uppercase">
+                        
+                        <div id="huntedForm" class="hidden mb-10 p-6 bg-slate-900/50 rounded-2xl space-y-6 border-2 border-slate-800 shadow-lg">
+                            <input type="text" id="hNick" placeholder="Nick">
+                            <input type="number" id="hLevel" placeholder="Level">
+                            <select id="hVoc">
+                                <option value="EK">EK</option><option value="ED">ED</option><option value="MS">MS</option><option value="RP">RP</option><option value="Monk">Monk</option>
+                            </select>
+                            <button onclick="addHunted()" class="w-full bg-green-600 py-4 rounded-xl font-bold uppercase">Adicionar</button>
+                        </div>
+
                         <div class="overflow-x-auto text-white">
                             <table class="w-full text-left text-base min-w-[250px]">
                                 <thead class="border-b-2 border-slate-800"><tr class="text-slate-500 uppercase text-xs"><th>Nick</th><th>Lvl</th><th>Voc</th><th class="text-right adm-tool hidden">Ação</th></tr></thead>
@@ -247,7 +267,8 @@
         const rtdb = firebase.database();
 
         let currentUID = "", currentNick = "", isAdmin = false, isRegisterMode = false;
-        let activeInputId = null, activeBtn = null, priorityAlvos = [];
+        let activeInputId = null, activeBtn = null;
+        let currentReportId = null;
         let presenceRef = null;
 
         auth.onAuthStateChanged(async (user) => {
@@ -267,7 +288,6 @@
                     document.getElementById('loginSection').classList.add('hidden');
                     document.getElementById('welcomeMsg').innerText = `Nick: ${currentNick}`;
                     
-                    // MOSTRA O POPUP DE REGRAS AO ENTRAR
                     document.getElementById('welcomeModal').style.display = 'flex';
 
                     setupPresence(user.uid);
@@ -277,7 +297,13 @@
 
                     if (isAdmin) {
                         document.querySelectorAll('.adm-tool').forEach(t => t.classList.remove('hidden'));
+                        loadUsers();
                         cleanupOldReports();
+                        db.collection("users").where("status", "==", "pendente").onSnapshot(snap => {
+                            const b = document.getElementById('memberManageBtn');
+                            if (snap.size > 0) b.classList.add('pending-alert');
+                            else b.classList.remove('pending-alert');
+                        });
                     }
                 }
             } else {
@@ -320,21 +346,77 @@
         }
 
         async function upload(f) { if(!f) return null; const ref = storage.ref(`provas/${Date.now()}_${f.name}`); await ref.put(f); return await ref.getDownloadURL(); }
-        
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        
-        // --- Funções de Interface Existentes ---
         function clearPrints() { document.getElementById('imgStart').value = ""; document.getElementById('imgEnd').value = ""; resetPasteButtons(); activeInputId = null; }
         function resetPasteButtons() { ['btnPaste1', 'btnPaste2'].forEach(id => { const b = document.getElementById(id); b.innerText = "Colar (Ctrl+V)"; b.classList.remove('paste-btn-active'); b.style.background = ""; }); }
-        async function handlePasteAction(inputId, btn) { try { const clipboardItems = await navigator.clipboard.read(); for (const item of clipboardItems) { for (const type of item.types) { if (type.startsWith('image/')) { const blob = await item.getType(type); const dt = new DataTransfer(); dt.items.add(new File([blob], "paste.png", { type })); document.getElementById(inputId).files = dt.files; btn.innerText = "FOTO OK!"; btn.style.background = "#059669"; return; } } } activatePasteFallback(inputId, btn); } catch (err) { activatePasteFallback(inputId, btn); } }
-        function activatePasteFallback(inputId, btn) { resetPasteButtons(); activeInputId = inputId; activeBtn = btn; btn.classList.add('paste-btn-active'); btn.innerText = "AGUARDANDO CTRL+V..."; }
-        window.addEventListener('paste', e => { if (!activeInputId) return; const items = (e.clipboardData || e.originalEvent.clipboardData).items; for (let i in items) { if (items[i].kind === 'file') { const blob = items[i].getAsFile(); const dt = new DataTransfer(); dt.items.add(blob); document.getElementById(activeInputId).files = dt.files; activeBtn.innerText = "FOTO OK!"; activeBtn.classList.remove('paste-btn-active'); activeBtn.style.background = "#059669"; activeInputId = null; } } });
+        
+        async function handlePasteAction(inputId, btn) {
+            try {
+                const clipboardItems = await navigator.clipboard.read();
+                for (const item of clipboardItems) {
+                    for (const type of item.types) {
+                        if (type.startsWith('image/')) {
+                            const blob = await item.getType(type);
+                            const dt = new DataTransfer();
+                            dt.items.add(new File([blob], "paste.png", { type }));
+                            document.getElementById(inputId).files = dt.files;
+                            btn.innerText = "FOTO OK!";
+                            btn.style.background = "#059669";
+                            return;
+                        }
+                    }
+                }
+                activatePasteFallback(inputId, btn);
+            } catch (err) { activatePasteFallback(inputId, btn); }
+        }
 
-        function setupPresence(uid) { presenceRef = rtdb.ref('/status/' + uid); presenceRef.set({ isOnline: true, nick: currentNick, lastActive: firebase.database.ServerValue.TIMESTAMP }); presenceRef.onDisconnect().set({ isOnline: false, nick: currentNick, lastActive: firebase.database.ServerValue.TIMESTAMP }); }
-        async function toggleOnlineStatus() { const checked = document.getElementById('statusToggle').checked; if (presenceRef) await presenceRef.update({ isOnline: checked }); await db.collection("users").doc(currentUID).update({ isOnline: checked }); }
-        function monitorOnline() { rtdb.ref('/status').on('value', snap => { const div = document.getElementById('onlineList'); div.innerHTML = ''; snap.forEach(child => { const data = child.val(); if (data && data.isOnline === true) div.innerHTML += `<span class="bg-slate-800 px-4 py-2 rounded-lg border-2 border-green-500/20 text-green-400 shadow-sm text-sm">● ${data.nick}</span>`; }); }); }
-        function logout() { auth.signOut(); location.reload(); }
-        function openZoom(u) { document.getElementById('modalImg').src = u; document.getElementById('zoomModal').style.display = 'flex'; }
+        function activatePasteFallback(inputId, btn) {
+            resetPasteButtons();
+            activeInputId = inputId;
+            activeBtn = btn;
+            btn.classList.add('paste-btn-active');
+            btn.innerText = "AGUARDANDO CTRL+V...";
+        }
+
+        window.addEventListener('paste', e => {
+            if (!activeInputId) return;
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let i in items) {
+                if (items[i].kind === 'file') {
+                    const blob = items[i].getAsFile();
+                    const dt = new DataTransfer();
+                    dt.items.add(blob);
+                    document.getElementById(activeInputId).files = dt.files;
+                    activeBtn.innerText = "FOTO OK!";
+                    activeBtn.classList.remove('paste-btn-active');
+                    activeBtn.style.background = "#059669";
+                    activeInputId = null;
+                }
+            }
+        });
+
+        function setupPresence(uid) { 
+            presenceRef = rtdb.ref('/status/' + uid); 
+            presenceRef.set({ isOnline: true, nick: currentNick, lastActive: firebase.database.ServerValue.TIMESTAMP }); 
+            presenceRef.onDisconnect().set({ isOnline: false, nick: currentNick, lastActive: firebase.database.ServerValue.TIMESTAMP }); 
+        }
+
+        async function toggleOnlineStatus() { 
+            const checked = document.getElementById('statusToggle').checked; 
+            if (presenceRef) await presenceRef.update({ isOnline: checked }); 
+            await db.collection("users").doc(currentUID).update({ isOnline: checked }); 
+        }
+
+        function monitorOnline() { 
+            rtdb.ref('/status').on('value', snap => { 
+                const div = document.getElementById('onlineList'); 
+                div.innerHTML = ''; 
+                snap.forEach(child => { 
+                    const data = child.val(); 
+                    if (data && data.isOnline === true) div.innerHTML += `<span class="bg-slate-800 px-4 py-2 rounded-lg border-2 border-green-500/20 text-green-400 shadow-sm text-sm">● ${data.nick}</span>`; 
+                }); 
+            }); 
+        }
 
         function loadReports() {
             const search = document.getElementById('searchEnemy').value.toUpperCase(), filter = document.getElementById('filterStatusMural').value;
@@ -343,7 +425,16 @@
                 snap.forEach(doc => {
                     const r = doc.data(); if(r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
                     if ((isAdmin || r.status !== "Pendente" || r.reporter === currentNick) && (!search || r.enemy.includes(search)) && (filter === "Todos" || r.status === filter)) {
-                        tbody.innerHTML += `<tr class="hover:bg-slate-800/30"><td class="p-4 text-xs font-bold text-slate-500">${r.timestamp?.toDate().toLocaleDateString() || ''}</td><td class="p-4"><div class="font-bold text-red-500 uppercase">${r.enemy}</div><div class="text-xs text-slate-400">${r.respawn || ''}</div></td><td class="p-4 font-bold uppercase italic">${r.reporter}</td><td class="p-4 text-center font-bold text-yellow-500">${r.points} pts</td><td class="p-4 text-center"><button onclick="openZoom('${r.imgStart}')" class="text-blue-500 underline">P1</button> ${r.imgEnd?`<button onclick="openZoom('${r.imgEnd}')" class="text-blue-500 underline ml-2">P2</button>`:''}</td><td class="p-4 text-right adm-tool ${isAdmin?'':'hidden'}"><button onclick="if(confirm('Deletar?'))db.collection('reports').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button></td></tr>`;
+                        tbody.innerHTML += `<tr class="hover:bg-slate-800/30">
+                            <td class="p-4 text-xs font-bold text-slate-500">${r.timestamp?.toDate().toLocaleDateString() || ''}</td>
+                            <td class="p-4"><div class="font-bold text-red-500 uppercase">${r.enemy}</div><div class="text-xs text-slate-400">${r.respawn || ''}</div></td>
+                            <td class="p-4 font-bold uppercase italic">${r.reporter}</td>
+                            <td class="p-4 text-center font-bold text-yellow-500">${r.points} pts</td>
+                            <td class="p-4 text-center"><button onclick="openZoom('${r.imgStart}')" class="text-blue-500 underline">P1</button> ${r.imgEnd?`<button onclick="openZoom('${r.imgEnd}')" class="text-blue-500 underline ml-2">P2</button>`:''}</td>
+                            <td class="p-4 text-right adm-tool ${isAdmin?'':'hidden'} space-x-2">
+                                <button onclick="openEditModal('${doc.id}','${r.status}',${r.points},'${r.reason||''}')" class="text-white">✎</button>
+                                <button onclick="if(confirm('Deletar?'))db.collection('reports').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button>
+                            </td></tr>`;
                     }
                 });
                 const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0, 10);
@@ -351,10 +442,108 @@
             });
         }
 
-        function loadHunteds() { const search = document.getElementById('searchHunted').value.toUpperCase(); db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => { const tbody = document.getElementById('huntedBody'); tbody.innerHTML = ""; snap.forEach(doc => { const h = doc.data(); if(!search || h.nick.includes(search)) tbody.innerHTML += `<tr class="border-b border-slate-800/50"><td class="py-4 font-bold uppercase ${h.priority?'text-yellow-500':'text-red-500'}">${h.nick}</td><td class="py-4 text-slate-400 text-center">${h.lvl || '--'}</td><td class="py-4 text-blue-400 text-center">${h.voc || '--'}</td></tr>`; }); }); }
-        async function handleAuth() { const email = document.getElementById('userEmail').value, pass = document.getElementById('userPass').value, nick = document.getElementById('userNickRegister').value, btn = document.getElementById('mainBtn'); if(!email || !pass) return; try { if (isRegisterMode) { const res = await auth.createUserWithEmailAndPassword(email, pass); await db.collection("users").doc(res.user.uid).set({ nick, email, role: "member", status: "pendente", isOnline: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); alert("Aguarde liberação!"); auth.signOut(); } else { await auth.signInWithEmailAndPassword(email, pass); } } catch (e) { alert(e.message); } }
+        function loadUsers() { 
+            db.collection("users").onSnapshot(snap => { 
+                const tbody = document.getElementById('usersTableBody'); 
+                tbody.innerHTML = ""; 
+                snap.forEach(doc => { 
+                    const u = doc.data(); 
+                    const isP = u.status === 'pendente'; 
+                    tbody.innerHTML += `<tr class="border-b border-slate-800/50">
+                        <td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td>
+                        <td class="p-4"><span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td>
+                        <td class="p-4 text-right space-x-4">
+                            ${isP?`<button onclick="db.collection('users').doc('${doc.id}').update({status:'aprovado'})" class="bg-green-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">OK</button>`:''}
+                            <button onclick="db.collection('users').doc('${doc.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">CARGO</button>
+                            <button onclick="if(confirm('Banir?'))db.collection('users').doc('${doc.id}').delete()" class="bg-red-900 px-4 py-2 rounded-xl font-bold uppercase text-sm">X</button>
+                        </td></tr>`; 
+                }); 
+            }); 
+        }
+
+        function openEditModal(id, status, points, reason) { 
+            currentReportId = id; 
+            document.getElementById('editStatus').value = status; 
+            document.getElementById('editPoints').value = points || 0; 
+            document.getElementById('editReason').value = reason || ''; 
+            toggleReasonField(); 
+            document.getElementById('editModal').style.display = 'flex'; 
+        }
+
+        function toggleReasonField() { document.getElementById('reasonDiv').style.display = document.getElementById('editStatus').value === 'Recusado' ? 'block' : 'none'; }
+        
+        async function saveEdit() { 
+            await db.collection("reports").doc(currentReportId).update({ 
+                status: document.getElementById('editStatus').value, 
+                points: parseInt(document.getElementById('editPoints').value || 0), 
+                reason: document.getElementById('editStatus').value === 'Recusado' ? document.getElementById('editReason').value.trim() : "" 
+            }); 
+            closeModal('editModal'); 
+        }
+
+        function showUserPanel() { document.getElementById('userPanel').classList.toggle('hidden'); }
+        function toggleHuntedForm() { document.getElementById('huntedForm').classList.toggle('hidden'); }
+        
+        async function addHunted() { 
+            const n = document.getElementById('hNick').value.trim().toUpperCase(), l = parseInt(document.getElementById('hLevel').value), v = document.getElementById('hVoc').value; 
+            if(!n || isNaN(l)) return alert("Preencha nick e level!"); 
+            await db.collection("hunteds").add({ nick: n, lvl: l, voc: v, priority: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); 
+            toggleHuntedForm(); 
+        }
+
+        function loadHunteds() { 
+            const search = document.getElementById('searchHunted').value.toUpperCase(); 
+            db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => { 
+                const tbody = document.getElementById('huntedBody'); 
+                tbody.innerHTML = ""; 
+                snap.forEach(doc => { 
+                    const h = doc.data(); 
+                    if(!search || h.nick.includes(search)) 
+                        tbody.innerHTML += `<tr class="border-b border-slate-800/50">
+                            <td class="py-4 font-bold uppercase ${h.priority?'text-yellow-500':'text-red-500'}">${h.nick}</td>
+                            <td class="py-4 text-slate-400 text-center">${h.lvl || '--'}</td>
+                            <td class="py-4 text-blue-400 text-center">${h.voc || '--'}</td>
+                            <td class="py-4 text-right adm-tool ${isAdmin?'':'hidden'}">
+                                <button onclick="if(confirm('Remover?'))db.collection('hunteds').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button>
+                            </td></tr>`; 
+                }); 
+            }); 
+        }
+
+        async function handleAuth() { 
+            const email = document.getElementById('userEmail').value, pass = document.getElementById('userPass').value, nick = document.getElementById('userNickRegister').value, btn = document.getElementById('mainBtn'); 
+            if(!email || !pass) return; 
+            try { 
+                if (isRegisterMode) { 
+                    const res = await auth.createUserWithEmailAndPassword(email, pass); 
+                    await db.collection("users").doc(res.user.uid).set({ nick, email, role: "member", status: "pendente", isOnline: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); 
+                    alert("Aguarde liberação!"); 
+                    auth.signOut(); 
+                } else { await auth.signInWithEmailAndPassword(email, pass); } 
+            } catch (e) { alert(e.message); } 
+        }
+
         function toggleAuthMode() { isRegisterMode = !isRegisterMode; document.getElementById('registerFields').classList.toggle('hidden'); document.getElementById('mainBtn').innerText = isRegisterMode ? "Cadastrar" : "Entrar"; }
+        function logout() { auth.signOut(); location.reload(); }
+        function openZoom(u) { document.getElementById('modalImg').src = u; document.getElementById('zoomModal').style.display = 'flex'; }
         async function cleanupOldReports() { const limit = new Date(); limit.setDate(limit.getDate() - 30); const snap = await db.collection("reports").where("timestamp", "<", limit).get(); snap.forEach(doc => db.collection("reports").doc(doc.id).delete()); }
+        function resetPassword() { const e = document.getElementById('userEmail').value.trim(); if(e) auth.sendPasswordResetEmail(e).then(() => alert("Link enviado!")); }
+        
+        function generateWarReport() { 
+            const s = document.getElementById('filterStart').value, e = document.getElementById('filterEnd').value; 
+            if(!s || !e) return alert("Datas!"); 
+            db.collection("reports").where("status", "==", "Aprovado").get().then(snap => { 
+                let ms = {}, to = 0, tp = 0; 
+                snap.forEach(doc => { 
+                    const r = doc.data(), d = r.timestamp.toDate().toISOString().split('T')[0]; 
+                    if(d >= s && d <= e) { to++; tp += r.points; ms[r.reporter] = (ms[r.reporter] || 0) + r.points; } 
+                }); 
+                if(to === 0) return alert("Sem registros!"); 
+                let l = `⚔️ **NEW ORDER AUDIT** ⚔️\n📅 **PERÍODO:** ${s} a ${e}\n📊 **TOTAL:** ${to} Ops | ${tp} pts\n\n🏆 **RANKING:**\n`; 
+                Object.entries(ms).sort((a,b)=>b[1]-a[1]).forEach(([n,p],i)=> l += `${i+1}. ${n}: ${p} pts\n`); 
+                navigator.clipboard.writeText(l).then(() => alert("COPIADO!")); 
+            }); 
+        }
     </script>
 </body>
 </html>
