@@ -30,6 +30,9 @@
         input:checked + .slider { background-color: #059669; border-color: #10b981; }
         input:checked + .slider:before { transform: translateX(26px); background-color: white; }
         
+        /* Checkbox Style */
+        .custom-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #ef4444; }
+
         #onlineList { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 100px; overflow-y: auto; padding: 5px; }
         @media (max-width: 1024px) { #onlineList { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 768px) {
@@ -61,7 +64,7 @@
                 <p class="flex items-center gap-3"><span class="text-red-500 text-2xl">•</span> Kills aparecendo no Analyzer</p>
                 <p class="flex items-center gap-3"><span class="text-red-500 text-2xl">•</span> Print de início + Tempo total</p>
             </div>
-            <button onclick="closeModal('welcomeModal')" class="w-full bg-red-600 py-5 rounded-xl font-bold uppercase text-xl hover:bg-red-500 transition">Entendi as Regras</button>
+            <button onclick="closeModal('welcomeModal')" class="w-full bg-red-600 py-5 rounded-xl font-bold uppercase text-xl hover:bg-red-500 transition">Entredi as Regras</button>
         </div>
     </div>
 
@@ -198,7 +201,10 @@
                 <div class="lg:col-span-6 order-1 lg:order-2">
                     <div class="glass p-6 md:p-10 min-h-[600px] shadow-2xl">
                         <div class="flex flex-col md:flex-row justify-between items-center mb-8 border-b-2 border-slate-800 pb-8 gap-6">
-                            <h2 class="text-3xl md:text-4xl font-bold uppercase text-slate-400 italic">Lista KS</h2>
+                            <div class="flex flex-col gap-2">
+                                <h2 class="text-3xl md:text-4xl font-bold uppercase text-slate-400 italic">Lista KS</h2>
+                                <button id="multiDeleteBtn" onclick="deleteSelectedReports()" class="hidden bg-red-600 hover:bg-red-700 text-[10px] px-3 py-1 rounded-lg font-bold uppercase transition">Apagar Selecionados</button>
+                            </div>
                             <div class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
                                 <select id="filterStatusMural" onchange="loadReports()" class="glass text-base">
                                     <option value="Todos">Todos</option>
@@ -212,7 +218,15 @@
                         <div class="overflow-x-auto text-white">
                             <table class="w-full text-left min-w-[600px]">
                                 <thead class="border-b-2 border-slate-800">
-                                    <tr><th class="p-4">Data</th><th class="p-4">Alvo/Local</th><th class="p-4">Nick</th><th class="p-4 text-center">Pts</th><th class="p-4 text-center">Prints</th><th class="p-4 text-right adm-tool hidden">Ações</th></tr>
+                                    <tr>
+                                        <th class="p-4 adm-tool hidden"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" class="custom-checkbox"></th>
+                                        <th class="p-4">Data</th>
+                                        <th class="p-4">Alvo/Local</th>
+                                        <th class="p-4">Nick</th>
+                                        <th class="p-4 text-center">Pts</th>
+                                        <th class="p-4 text-center">Prints</th>
+                                        <th class="p-4 text-right adm-tool hidden">Ações</th>
+                                    </tr>
                                 </thead>
                                 <tbody id="reportsBody" class="divide-y divide-slate-800/50"></tbody>
                             </table>
@@ -287,23 +301,15 @@
                     document.getElementById('dashboard').classList.remove('hidden');
                     document.getElementById('loginSection').classList.add('hidden');
                     document.getElementById('welcomeMsg').innerText = `Nick: ${currentNick}`;
-                    
                     document.getElementById('welcomeModal').style.display = 'flex';
-
                     setupPresence(user.uid);
                     monitorOnline();
                     loadReports();
                     loadHunteds();
-
                     if (isAdmin) {
                         document.querySelectorAll('.adm-tool').forEach(t => t.classList.remove('hidden'));
                         loadUsers();
                         cleanupOldReports();
-                        db.collection("users").where("status", "==", "pendente").onSnapshot(snap => {
-                            const b = document.getElementById('memberManageBtn');
-                            if (snap.size > 0) b.classList.add('pending-alert');
-                            else b.classList.remove('pending-alert');
-                        });
                     }
                 }
             } else {
@@ -312,37 +318,88 @@
             }
         });
 
+        // --- FUNÇÕES DE SELEÇÃO MÚLTIPLA ---
+        function toggleSelectAll(master) {
+            const boxes = document.querySelectorAll('.report-checkbox');
+            boxes.forEach(b => b.checked = master.checked);
+            updateMultiDeleteButton();
+        }
+
+        function updateMultiDeleteButton() {
+            const selected = document.querySelectorAll('.report-checkbox:checked').length;
+            const btn = document.getElementById('multiDeleteBtn');
+            if (selected > 0 && isAdmin) {
+                btn.classList.remove('hidden');
+                btn.innerText = `Apagar ${selected} itens`;
+            } else {
+                btn.classList.add('hidden');
+            }
+        }
+
+        async function deleteSelectedReports() {
+            if (!confirm("Deseja apagar TODOS os itens selecionados?")) return;
+            const boxes = document.querySelectorAll('.report-checkbox:checked');
+            const btn = document.getElementById('multiDeleteBtn');
+            btn.innerText = "Apagando...";
+            btn.disabled = true;
+
+            for (let box of boxes) {
+                const id = box.getAttribute('data-id');
+                await db.collection("reports").doc(id).delete();
+            }
+            
+            document.getElementById('selectAll').checked = false;
+            updateMultiDeleteButton();
+            btn.disabled = false;
+            alert("Excluídos com sucesso!");
+        }
+
+        // --- FUNÇÕES DE CARREGAMENTO ---
+        function loadReports() {
+            const search = document.getElementById('searchEnemy').value.toUpperCase(), filter = document.getElementById('filterStatusMural').value;
+            db.collection("reports").orderBy("timestamp", "desc").onSnapshot(snap => {
+                const tbody = document.getElementById('reportsBody'); tbody.innerHTML = ""; let sc = {};
+                snap.forEach(doc => {
+                    const r = doc.data(); if(r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
+                    if ((isAdmin || r.status !== "Pendente" || r.reporter === currentNick) && (!search || r.enemy.includes(search)) && (filter === "Todos" || r.status === filter)) {
+                        tbody.innerHTML += `<tr class="hover:bg-slate-800/30">
+                            <td class="p-4 adm-tool ${isAdmin?'':'hidden'}"><input type="checkbox" class="report-checkbox custom-checkbox" data-id="${doc.id}" onclick="updateMultiDeleteButton()"></td>
+                            <td class="p-4 text-xs font-bold text-slate-500">${r.timestamp?.toDate().toLocaleDateString() || ''}</td>
+                            <td class="p-4"><div class="font-bold text-red-500 uppercase">${r.enemy}</div><div class="text-xs text-slate-400">${r.respawn || ''}</div></td>
+                            <td class="p-4 font-bold uppercase italic">${r.reporter}</td>
+                            <td class="p-4 text-center font-bold text-yellow-500">${r.points} pts</td>
+                            <td class="p-4 text-center"><button onclick="openZoom('${r.imgStart}')" class="text-blue-500 underline">P1</button> ${r.imgEnd?`<button onclick="openZoom('${r.imgEnd}')" class="text-blue-500 underline ml-2">P2</button>`:''}</td>
+                            <td class="p-4 text-right adm-tool ${isAdmin?'':'hidden'} space-x-2">
+                                <button onclick="openEditModal('${doc.id}','${r.status}',${r.points},'${r.reason||''}')" class="text-white">✎</button>
+                                <button onclick="if(confirm('Deletar?'))db.collection('reports').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button>
+                            </td></tr>`;
+                    }
+                });
+                updateMultiDeleteButton();
+                const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0, 10);
+                document.getElementById('ranking').innerHTML = sorted.map(([n, p], i) => `<div class="flex justify-between p-3 glass ${i<3?'rank-'+(i+1):''}"><span>${i+1}. ${n}</span><span class="font-bold">${p} pts</span></div>`).join('');
+            });
+        }
+
+        // --- RESTO DO CÓDIGO (FIREBASE & UI) ---
         async function sendReport() {
             const btn = document.getElementById('sendBtn');
             const en = document.getElementById('enemyName').value.trim();
             const f1 = document.getElementById('imgStart').files[0];
             if(!en) return alert("Nick Inimigo!");
             if(!f1) return alert("Anexe a Print 1!");
-
-            btn.innerText = "Enviando...";
-            btn.disabled = true;
+            btn.innerText = "Enviando..."; btn.disabled = true;
             try {
                 const u1 = await upload(f1);
                 const u2 = await upload(document.getElementById('imgEnd').files[0]);
                 await db.collection("reports").add({
-                    enemy: en.toUpperCase(),
-                    respawn: document.getElementById('respawn').value.trim(),
-                    reporter: currentNick,
-                    timeS: document.getElementById('timeStart').value,
-                    timeE: document.getElementById('timeEnd').value,
-                    imgStart: u1,
-                    imgEnd: u2,
-                    status: "Pendente",
-                    points: 0,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    enemy: en.toUpperCase(), respawn: document.getElementById('respawn').value.trim(),
+                    reporter: currentNick, timeS: document.getElementById('timeStart').value,
+                    timeE: document.getElementById('timeEnd').value, imgStart: u1, imgEnd: u2,
+                    status: "Pendente", points: 0, timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                alert("Transmitido com sucesso!");
-                location.reload();
-            } catch(e){
-                alert("Erro: " + e.message);
-                btn.disabled = false;
-                btn.innerText = "Transmitir KS";
-            }
+                alert("Transmitido com sucesso!"); location.reload();
+            } catch(e){ alert("Erro: " + e.message); btn.disabled = false; btn.innerText = "Transmitir KS"; }
         }
 
         async function upload(f) { if(!f) return null; const ref = storage.ref(`provas/${Date.now()}_${f.name}`); await ref.put(f); return await ref.getDownloadURL(); }
@@ -357,12 +414,9 @@
                     for (const type of item.types) {
                         if (type.startsWith('image/')) {
                             const blob = await item.getType(type);
-                            const dt = new DataTransfer();
-                            dt.items.add(new File([blob], "paste.png", { type }));
+                            const dt = new DataTransfer(); dt.items.add(new File([blob], "paste.png", { type }));
                             document.getElementById(inputId).files = dt.files;
-                            btn.innerText = "FOTO OK!";
-                            btn.style.background = "#059669";
-                            return;
+                            btn.innerText = "FOTO OK!"; btn.style.background = "#059669"; return;
                         }
                     }
                 }
@@ -370,13 +424,7 @@
             } catch (err) { activatePasteFallback(inputId, btn); }
         }
 
-        function activatePasteFallback(inputId, btn) {
-            resetPasteButtons();
-            activeInputId = inputId;
-            activeBtn = btn;
-            btn.classList.add('paste-btn-active');
-            btn.innerText = "AGUARDANDO CTRL+V...";
-        }
+        function activatePasteFallback(inputId, btn) { resetPasteButtons(); activeInputId = inputId; activeBtn = btn; btn.classList.add('paste-btn-active'); btn.innerText = "AGUARDANDO CTRL+V..."; }
 
         window.addEventListener('paste', e => {
             if (!activeInputId) return;
@@ -384,13 +432,10 @@
             for (let i in items) {
                 if (items[i].kind === 'file') {
                     const blob = items[i].getAsFile();
-                    const dt = new DataTransfer();
-                    dt.items.add(blob);
+                    const dt = new DataTransfer(); dt.items.add(blob);
                     document.getElementById(activeInputId).files = dt.files;
-                    activeBtn.innerText = "FOTO OK!";
-                    activeBtn.classList.remove('paste-btn-active');
-                    activeBtn.style.background = "#059669";
-                    activeInputId = null;
+                    activeBtn.innerText = "FOTO OK!"; activeBtn.classList.remove('paste-btn-active');
+                    activeBtn.style.background = "#059669"; activeInputId = null;
                 }
             }
         });
@@ -409,8 +454,7 @@
 
         function monitorOnline() { 
             rtdb.ref('/status').on('value', snap => { 
-                const div = document.getElementById('onlineList'); 
-                div.innerHTML = ''; 
+                const div = document.getElementById('onlineList'); div.innerHTML = ''; 
                 snap.forEach(child => { 
                     const data = child.val(); 
                     if (data && data.isOnline === true) div.innerHTML += `<span class="bg-slate-800 px-4 py-2 rounded-lg border-2 border-green-500/20 text-green-400 shadow-sm text-sm">● ${data.nick}</span>`; 
@@ -418,37 +462,11 @@
             }); 
         }
 
-        function loadReports() {
-            const search = document.getElementById('searchEnemy').value.toUpperCase(), filter = document.getElementById('filterStatusMural').value;
-            db.collection("reports").orderBy("timestamp", "desc").onSnapshot(snap => {
-                const tbody = document.getElementById('reportsBody'); tbody.innerHTML = ""; let sc = {};
-                snap.forEach(doc => {
-                    const r = doc.data(); if(r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
-                    if ((isAdmin || r.status !== "Pendente" || r.reporter === currentNick) && (!search || r.enemy.includes(search)) && (filter === "Todos" || r.status === filter)) {
-                        tbody.innerHTML += `<tr class="hover:bg-slate-800/30">
-                            <td class="p-4 text-xs font-bold text-slate-500">${r.timestamp?.toDate().toLocaleDateString() || ''}</td>
-                            <td class="p-4"><div class="font-bold text-red-500 uppercase">${r.enemy}</div><div class="text-xs text-slate-400">${r.respawn || ''}</div></td>
-                            <td class="p-4 font-bold uppercase italic">${r.reporter}</td>
-                            <td class="p-4 text-center font-bold text-yellow-500">${r.points} pts</td>
-                            <td class="p-4 text-center"><button onclick="openZoom('${r.imgStart}')" class="text-blue-500 underline">P1</button> ${r.imgEnd?`<button onclick="openZoom('${r.imgEnd}')" class="text-blue-500 underline ml-2">P2</button>`:''}</td>
-                            <td class="p-4 text-right adm-tool ${isAdmin?'':'hidden'} space-x-2">
-                                <button onclick="openEditModal('${doc.id}','${r.status}',${r.points},'${r.reason||''}')" class="text-white">✎</button>
-                                <button onclick="if(confirm('Deletar?'))db.collection('reports').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button>
-                            </td></tr>`;
-                    }
-                });
-                const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0, 10);
-                document.getElementById('ranking').innerHTML = sorted.map(([n, p], i) => `<div class="flex justify-between p-3 glass ${i<3?'rank-'+(i+1):''}"><span>${i+1}. ${n}</span><span class="font-bold">${p} pts</span></div>`).join('');
-            });
-        }
-
         function loadUsers() { 
             db.collection("users").onSnapshot(snap => { 
-                const tbody = document.getElementById('usersTableBody'); 
-                tbody.innerHTML = ""; 
+                const tbody = document.getElementById('usersTableBody'); tbody.innerHTML = ""; 
                 snap.forEach(doc => { 
-                    const u = doc.data(); 
-                    const isP = u.status === 'pendente'; 
+                    const u = doc.data(); const isP = u.status === 'pendente'; 
                     tbody.innerHTML += `<tr class="border-b border-slate-800/50">
                         <td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td>
                         <td class="p-4"><span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td>
@@ -466,8 +484,7 @@
             document.getElementById('editStatus').value = status; 
             document.getElementById('editPoints').value = points || 0; 
             document.getElementById('editReason').value = reason || ''; 
-            toggleReasonField(); 
-            document.getElementById('editModal').style.display = 'flex'; 
+            toggleReasonField(); document.getElementById('editModal').style.display = 'flex'; 
         }
 
         function toggleReasonField() { document.getElementById('reasonDiv').style.display = document.getElementById('editStatus').value === 'Recusado' ? 'block' : 'none'; }
@@ -494,11 +511,9 @@
         function loadHunteds() { 
             const search = document.getElementById('searchHunted').value.toUpperCase(); 
             db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => { 
-                const tbody = document.getElementById('huntedBody'); 
-                tbody.innerHTML = ""; 
+                const tbody = document.getElementById('huntedBody'); tbody.innerHTML = ""; 
                 snap.forEach(doc => { 
-                    const h = doc.data(); 
-                    if(!search || h.nick.includes(search)) 
+                    const h = doc.data(); if(!search || h.nick.includes(search)) 
                         tbody.innerHTML += `<tr class="border-b border-slate-800/50">
                             <td class="py-4 font-bold uppercase ${h.priority?'text-yellow-500':'text-red-500'}">${h.nick}</td>
                             <td class="py-4 text-slate-400 text-center">${h.lvl || '--'}</td>
@@ -517,8 +532,7 @@
                 if (isRegisterMode) { 
                     const res = await auth.createUserWithEmailAndPassword(email, pass); 
                     await db.collection("users").doc(res.user.uid).set({ nick, email, role: "member", status: "pendente", isOnline: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); 
-                    alert("Aguarde liberação!"); 
-                    auth.signOut(); 
+                    alert("Aguarde liberação!"); auth.signOut(); 
                 } else { await auth.signInWithEmailAndPassword(email, pass); } 
             } catch (e) { alert(e.message); } 
         }
@@ -533,8 +547,7 @@
             const s = document.getElementById('filterStart').value, e = document.getElementById('filterEnd').value; 
             if(!s || !e) return alert("Datas!"); 
             db.collection("reports").where("status", "==", "Aprovado").get().then(snap => { 
-                let ms = {}, to = 0, tp = 0; 
-                snap.forEach(doc => { 
+                let ms = {}, to = 0, tp = 0; snap.forEach(doc => { 
                     const r = doc.data(), d = r.timestamp.toDate().toISOString().split('T')[0]; 
                     if(d >= s && d <= e) { to++; tp += r.points; ms[r.reporter] = (ms[r.reporter] || 0) + r.points; } 
                 }); 
