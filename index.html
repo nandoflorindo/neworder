@@ -253,7 +253,7 @@
 
                         <div class="overflow-x-auto text-white">
                             <table class="w-full text-left text-base min-w-[250px]">
-                                <thead class="border-b-2 border-slate-800"><tr class="text-slate-500 uppercase text-xs"><th>Nick</th><th>Lvl</th><th>Voc</th><th class="text-right adm-tool hidden">Ação</th></tr></thead>
+                                <thead class="border-b-2 border-slate-800"><tr class="text-slate-500 uppercase text-xs"><th>Nick</th><th class="text-center">Lvl</th><th class="text-center">Voc</th><th class="text-right adm-tool hidden">Ação</th></tr></thead>
                                 <tbody id="huntedBody"></tbody>
                             </table>
                         </div>
@@ -318,6 +318,18 @@
             }
         });
 
+        async function handleAuth() {
+            const email = document.getElementById('userEmail').value, pass = document.getElementById('userPass').value, nick = document.getElementById('userNickRegister').value, btn = document.getElementById('mainBtn');
+            if(!email || !pass) return;
+            try {
+                if (isRegisterMode) {
+                    const res = await auth.createUserWithEmailAndPassword(email, pass);
+                    await db.collection("users").doc(res.user.uid).set({ nick, email, role: "member", status: "pendente", isOnline: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                    alert("Aguarde liberação!"); auth.signOut();
+                } else { await auth.signInWithEmailAndPassword(email, pass); }
+            } catch (e) { alert(e.message); }
+        }
+
         // --- FUNÇÕES DE SELEÇÃO MÚLTIPLA ---
         function toggleSelectAll(master) {
             const boxes = document.querySelectorAll('.report-checkbox');
@@ -331,27 +343,15 @@
             if (selected > 0 && isAdmin) {
                 btn.classList.remove('hidden');
                 btn.innerText = `Apagar ${selected} itens`;
-            } else {
-                btn.classList.add('hidden');
-            }
+            } else { btn.classList.add('hidden'); }
         }
 
         async function deleteSelectedReports() {
             if (!confirm("Deseja apagar TODOS os itens selecionados?")) return;
             const boxes = document.querySelectorAll('.report-checkbox:checked');
-            const btn = document.getElementById('multiDeleteBtn');
-            btn.innerText = "Apagando...";
-            btn.disabled = true;
-
-            for (let box of boxes) {
-                const id = box.getAttribute('data-id');
-                await db.collection("reports").doc(id).delete();
-            }
-            
+            for (let box of boxes) { await db.collection("reports").doc(box.getAttribute('data-id')).delete(); }
             document.getElementById('selectAll').checked = false;
             updateMultiDeleteButton();
-            btn.disabled = false;
-            alert("Excluídos com sucesso!");
         }
 
         // --- FUNÇÕES DE CARREGAMENTO ---
@@ -381,13 +381,11 @@
             });
         }
 
-        // --- RESTO DO CÓDIGO (FIREBASE & UI) ---
         async function sendReport() {
             const btn = document.getElementById('sendBtn');
             const en = document.getElementById('enemyName').value.trim();
             const f1 = document.getElementById('imgStart').files[0];
-            if(!en) return alert("Nick Inimigo!");
-            if(!f1) return alert("Anexe a Print 1!");
+            if(!en || !f1) return alert("Nick Inimigo e Print 1!");
             btn.innerText = "Enviando..."; btn.disabled = true;
             try {
                 const u1 = await upload(f1);
@@ -402,161 +400,68 @@
             } catch(e){ alert("Erro: " + e.message); btn.disabled = false; btn.innerText = "Transmitir KS"; }
         }
 
+        // --- SISTEMA HUNTED (EDIÇÃO E PRIORIDADE) ---
+        function loadHunteds() {
+            const search = document.getElementById('searchHunted').value.toUpperCase();
+            db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => {
+                const tbody = document.getElementById('huntedBody'); tbody.innerHTML = "";
+                snap.forEach(doc => {
+                    const h = doc.data();
+                    if(!search || h.nick.includes(search)) {
+                        tbody.innerHTML += `<tr class="border-b border-slate-800/50">
+                            <td class="py-4 font-bold uppercase text-lg ${h.priority?'text-yellow-500':'text-red-500'}">
+                                ${h.priority ? '⭐ ' : ''}${h.nick}
+                            </td>
+                            <td class="py-4 text-slate-400 font-bold text-center cursor-pointer hover:text-white" onclick="updateHuntedLevel('${doc.id}', ${h.lvl})">
+                                ${h.lvl || '--'}
+                            </td>
+                            <td class="py-4 text-blue-400 font-bold text-center">${h.voc || '--'}</td>
+                            <td class="py-4 text-right adm-tool ${isAdmin?'':'hidden'} space-x-3">
+                                <button onclick="togglePriority('${doc.id}', ${h.priority || false})" class="text-slate-500 hover:text-yellow-500">⭐</button>
+                                <button onclick="if(confirm('Remover?'))db.collection('hunteds').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button>
+                            </td></tr>`;
+                    }
+                });
+            });
+        }
+
+        async function togglePriority(id, current) { await db.collection("hunteds").doc(id).update({ priority: !current }); }
+
+        async function updateHuntedLevel(id, currentLvl) {
+            if(!isAdmin) return;
+            const newLvl = prompt("Atualizar Level de " + currentLvl + " para:", currentLvl);
+            if(newLvl && !isNaN(newLvl)) { await db.collection("hunteds").doc(id).update({ lvl: parseInt(newLvl) }); }
+        }
+
+        async function addHunted() {
+            const n = document.getElementById('hNick').value.trim().toUpperCase(), l = parseInt(document.getElementById('hLevel').value), v = document.getElementById('hVoc').value;
+            if(!n || isNaN(l)) return alert("Preencha nick e level!");
+            await db.collection("hunteds").add({ nick: n, lvl: l, voc: v, priority: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            toggleHuntedForm();
+        }
+
+        // --- SISTEMA BASE ---
         async function upload(f) { if(!f) return null; const ref = storage.ref(`provas/${Date.now()}_${f.name}`); await ref.put(f); return await ref.getDownloadURL(); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         function clearPrints() { document.getElementById('imgStart').value = ""; document.getElementById('imgEnd').value = ""; resetPasteButtons(); activeInputId = null; }
         function resetPasteButtons() { ['btnPaste1', 'btnPaste2'].forEach(id => { const b = document.getElementById(id); b.innerText = "Colar (Ctrl+V)"; b.classList.remove('paste-btn-active'); b.style.background = ""; }); }
-        
-        async function handlePasteAction(inputId, btn) {
-            try {
-                const clipboardItems = await navigator.clipboard.read();
-                for (const item of clipboardItems) {
-                    for (const type of item.types) {
-                        if (type.startsWith('image/')) {
-                            const blob = await item.getType(type);
-                            const dt = new DataTransfer(); dt.items.add(new File([blob], "paste.png", { type }));
-                            document.getElementById(inputId).files = dt.files;
-                            btn.innerText = "FOTO OK!"; btn.style.background = "#059669"; return;
-                        }
-                    }
-                }
-                activatePasteFallback(inputId, btn);
-            } catch (err) { activatePasteFallback(inputId, btn); }
-        }
-
-        function activatePasteFallback(inputId, btn) { resetPasteButtons(); activeInputId = inputId; activeBtn = btn; btn.classList.add('paste-btn-active'); btn.innerText = "AGUARDANDO CTRL+V..."; }
-
-        window.addEventListener('paste', e => {
-            if (!activeInputId) return;
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            for (let i in items) {
-                if (items[i].kind === 'file') {
-                    const blob = items[i].getAsFile();
-                    const dt = new DataTransfer(); dt.items.add(blob);
-                    document.getElementById(activeInputId).files = dt.files;
-                    activeBtn.innerText = "FOTO OK!"; activeBtn.classList.remove('paste-btn-active');
-                    activeBtn.style.background = "#059669"; activeInputId = null;
-                }
-            }
-        });
-
-        function setupPresence(uid) { 
-            presenceRef = rtdb.ref('/status/' + uid); 
-            presenceRef.set({ isOnline: true, nick: currentNick, lastActive: firebase.database.ServerValue.TIMESTAMP }); 
-            presenceRef.onDisconnect().set({ isOnline: false, nick: currentNick, lastActive: firebase.database.ServerValue.TIMESTAMP }); 
-        }
-
-        async function toggleOnlineStatus() { 
-            const checked = document.getElementById('statusToggle').checked; 
-            if (presenceRef) await presenceRef.update({ isOnline: checked }); 
-            await db.collection("users").doc(currentUID).update({ isOnline: checked }); 
-        }
-
-        function monitorOnline() { 
-            rtdb.ref('/status').on('value', snap => { 
-                const div = document.getElementById('onlineList'); div.innerHTML = ''; 
-                snap.forEach(child => { 
-                    const data = child.val(); 
-                    if (data && data.isOnline === true) div.innerHTML += `<span class="bg-slate-800 px-4 py-2 rounded-lg border-2 border-green-500/20 text-green-400 shadow-sm text-sm">● ${data.nick}</span>`; 
-                }); 
-            }); 
-        }
-
-        function loadUsers() { 
-            db.collection("users").onSnapshot(snap => { 
-                const tbody = document.getElementById('usersTableBody'); tbody.innerHTML = ""; 
-                snap.forEach(doc => { 
-                    const u = doc.data(); const isP = u.status === 'pendente'; 
-                    tbody.innerHTML += `<tr class="border-b border-slate-800/50">
-                        <td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td>
-                        <td class="p-4"><span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td>
-                        <td class="p-4 text-right space-x-4">
-                            ${isP?`<button onclick="db.collection('users').doc('${doc.id}').update({status:'aprovado'})" class="bg-green-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">OK</button>`:''}
-                            <button onclick="db.collection('users').doc('${doc.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">CARGO</button>
-                            <button onclick="if(confirm('Banir?'))db.collection('users').doc('${doc.id}').delete()" class="bg-red-900 px-4 py-2 rounded-xl font-bold uppercase text-sm">X</button>
-                        </td></tr>`; 
-                }); 
-            }); 
-        }
-
-        function openEditModal(id, status, points, reason) { 
-            currentReportId = id; 
-            document.getElementById('editStatus').value = status; 
-            document.getElementById('editPoints').value = points || 0; 
-            document.getElementById('editReason').value = reason || ''; 
-            toggleReasonField(); document.getElementById('editModal').style.display = 'flex'; 
-        }
-
+        async function handlePasteAction(i, b) { try { const clip = await navigator.clipboard.read(); for(const item of clip) { for(const type of item.types) { if(type.startsWith('image/')) { const blob = await item.getType(type); const dt = new DataTransfer(); dt.items.add(new File([blob], "p.png", {type})); document.getElementById(i).files = dt.files; b.innerText = "FOTO OK!"; b.style.background = "#059669"; return; } } } activatePasteFallback(i, b); } catch(e) { activatePasteFallback(i, b); } }
+        function activatePasteFallback(i, b) { resetPasteButtons(); activeInputId = i; activeBtn = b; b.classList.add('paste-btn-active'); b.innerText = "AGUARDANDO CTRL+V..."; }
+        window.addEventListener('paste', e => { if(!activeInputId) return; const items = (e.clipboardData || e.originalEvent.clipboardData).items; for(let i in items) { if(items[i].kind==='file') { const blob = items[i].getAsFile(); const dt = new DataTransfer(); dt.items.add(blob); document.getElementById(activeInputId).files = dt.files; activeBtn.innerText = "FOTO OK!"; activeBtn.classList.remove('paste-btn-active'); activeBtn.style.background="#059669"; activeInputId=null; } } });
+        function setupPresence(u) { presenceRef = rtdb.ref('/status/'+u); presenceRef.set({ isOnline: true, nick: currentNick }); presenceRef.onDisconnect().set({ isOnline: false, nick: currentNick }); }
+        async function toggleOnlineStatus() { const c = document.getElementById('statusToggle').checked; if(presenceRef) await presenceRef.update({ isOnline: c }); await db.collection("users").doc(currentUID).update({ isOnline: c }); }
+        function monitorOnline() { rtdb.ref('/status').on('value', s => { const d = document.getElementById('onlineList'); d.innerHTML = ''; s.forEach(c => { const val = c.val(); if(val && val.isOnline) d.innerHTML += `<span class="bg-slate-800 px-4 py-2 rounded-lg border-2 border-green-500/20 text-green-400 shadow-sm text-sm">● ${val.nick}</span>`; }); }); }
+        function loadUsers() { db.collection("users").onSnapshot(s => { const b = document.getElementById('usersTableBody'); b.innerHTML = ""; s.forEach(d => { const u = d.data(); const isP = u.status === 'pendente'; b.innerHTML += `<tr class="border-b border-slate-800/50"><td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td><td class="p-4"><span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td><td class="p-4 text-right space-x-4">${isP?`<button onclick="db.collection('users').doc('${d.id}').update({status:'aprovado'})" class="bg-green-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">OK</button>`:''}<button onclick="db.collection('users').doc('${d.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">CARGO</button><button onclick="if(confirm('Banir?'))db.collection('users').doc('${d.id}').delete()" class="bg-red-900 px-4 py-2 rounded-xl font-bold uppercase text-sm">X</button></td></tr>`; }); }); }
+        function openEditModal(id, s, p, r) { currentReportId = id; document.getElementById('editStatus').value = s; document.getElementById('editPoints').value = p || 0; document.getElementById('editReason').value = r || ''; toggleReasonField(); document.getElementById('editModal').style.display = 'flex'; }
         function toggleReasonField() { document.getElementById('reasonDiv').style.display = document.getElementById('editStatus').value === 'Recusado' ? 'block' : 'none'; }
-        
-        async function saveEdit() { 
-            await db.collection("reports").doc(currentReportId).update({ 
-                status: document.getElementById('editStatus').value, 
-                points: parseInt(document.getElementById('editPoints').value || 0), 
-                reason: document.getElementById('editStatus').value === 'Recusado' ? document.getElementById('editReason').value.trim() : "" 
-            }); 
-            closeModal('editModal'); 
-        }
-
+        async function saveEdit() { await db.collection("reports").doc(currentReportId).update({ status: document.getElementById('editStatus').value, points: parseInt(document.getElementById('editPoints').value || 0), reason: document.getElementById('editStatus').value === 'Recusado' ? document.getElementById('editReason').value.trim() : "" }); closeModal('editModal'); }
         function showUserPanel() { document.getElementById('userPanel').classList.toggle('hidden'); }
         function toggleHuntedForm() { document.getElementById('huntedForm').classList.toggle('hidden'); }
-        
-        async function addHunted() { 
-            const n = document.getElementById('hNick').value.trim().toUpperCase(), l = parseInt(document.getElementById('hLevel').value), v = document.getElementById('hVoc').value; 
-            if(!n || isNaN(l)) return alert("Preencha nick e level!"); 
-            await db.collection("hunteds").add({ nick: n, lvl: l, voc: v, priority: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); 
-            toggleHuntedForm(); 
-        }
-
-        function loadHunteds() { 
-            const search = document.getElementById('searchHunted').value.toUpperCase(); 
-            db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => { 
-                const tbody = document.getElementById('huntedBody'); tbody.innerHTML = ""; 
-                snap.forEach(doc => { 
-                    const h = doc.data(); if(!search || h.nick.includes(search)) 
-                        tbody.innerHTML += `<tr class="border-b border-slate-800/50">
-                            <td class="py-4 font-bold uppercase ${h.priority?'text-yellow-500':'text-red-500'}">${h.nick}</td>
-                            <td class="py-4 text-slate-400 text-center">${h.lvl || '--'}</td>
-                            <td class="py-4 text-blue-400 text-center">${h.voc || '--'}</td>
-                            <td class="py-4 text-right adm-tool ${isAdmin?'':'hidden'}">
-                                <button onclick="if(confirm('Remover?'))db.collection('hunteds').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button>
-                            </td></tr>`; 
-                }); 
-            }); 
-        }
-
-        async function handleAuth() { 
-            const email = document.getElementById('userEmail').value, pass = document.getElementById('userPass').value, nick = document.getElementById('userNickRegister').value, btn = document.getElementById('mainBtn'); 
-            if(!email || !pass) return; 
-            try { 
-                if (isRegisterMode) { 
-                    const res = await auth.createUserWithEmailAndPassword(email, pass); 
-                    await db.collection("users").doc(res.user.uid).set({ nick, email, role: "member", status: "pendente", isOnline: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); 
-                    alert("Aguarde liberação!"); auth.signOut(); 
-                } else { await auth.signInWithEmailAndPassword(email, pass); } 
-            } catch (e) { alert(e.message); } 
-        }
-
-        function toggleAuthMode() { isRegisterMode = !isRegisterMode; document.getElementById('registerFields').classList.toggle('hidden'); document.getElementById('mainBtn').innerText = isRegisterMode ? "Cadastrar" : "Entrar"; }
         function logout() { auth.signOut(); location.reload(); }
         function openZoom(u) { document.getElementById('modalImg').src = u; document.getElementById('zoomModal').style.display = 'flex'; }
         async function cleanupOldReports() { const limit = new Date(); limit.setDate(limit.getDate() - 30); const snap = await db.collection("reports").where("timestamp", "<", limit).get(); snap.forEach(doc => db.collection("reports").doc(doc.id).delete()); }
         function resetPassword() { const e = document.getElementById('userEmail').value.trim(); if(e) auth.sendPasswordResetEmail(e).then(() => alert("Link enviado!")); }
-        
-        function generateWarReport() { 
-            const s = document.getElementById('filterStart').value, e = document.getElementById('filterEnd').value; 
-            if(!s || !e) return alert("Datas!"); 
-            db.collection("reports").where("status", "==", "Aprovado").get().then(snap => { 
-                let ms = {}, to = 0, tp = 0; snap.forEach(doc => { 
-                    const r = doc.data(), d = r.timestamp.toDate().toISOString().split('T')[0]; 
-                    if(d >= s && d <= e) { to++; tp += r.points; ms[r.reporter] = (ms[r.reporter] || 0) + r.points; } 
-                }); 
-                if(to === 0) return alert("Sem registros!"); 
-                let l = `⚔️ **NEW ORDER AUDIT** ⚔️\n📅 **PERÍODO:** ${s} a ${e}\n📊 **TOTAL:** ${to} Ops | ${tp} pts\n\n🏆 **RANKING:**\n`; 
-                Object.entries(ms).sort((a,b)=>b[1]-a[1]).forEach(([n,p],i)=> l += `${i+1}. ${n}: ${p} pts\n`); 
-                navigator.clipboard.writeText(l).then(() => alert("COPIADO!")); 
-            }); 
-        }
+        function generateWarReport() { const s = document.getElementById('filterStart').value, e = document.getElementById('filterEnd').value; if(!s || !e) return alert("Datas!"); db.collection("reports").where("status", "==", "Aprovado").get().then(snap => { let ms = {}, to = 0, tp = 0; snap.forEach(doc => { const r = doc.data(), d = r.timestamp.toDate().toISOString().split('T')[0]; if(d >= s && d <= e) { to++; tp += r.points; ms[r.reporter] = (ms[r.reporter] || 0) + r.points; } }); if(to === 0) return alert("Sem registros!"); let l = `⚔️ **NEW ORDER AUDIT** ⚔️\n📅 **PERÍODO:** ${s} a ${e}\n📊 **TOTAL:** ${to} Ops | ${tp} pts\n\n🏆 **RANKING:**\n`; Object.entries(ms).sort((a,b)=>b[1]-a[1]).forEach(([n,p],i)=> l += `${i+1}. ${n}: ${p} pts\n`); navigator.clipboard.writeText(l).then(() => alert("COPIADO!")); }); }
     </script>
 </body>
 </html>
