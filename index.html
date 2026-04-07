@@ -30,7 +30,6 @@
         input:checked + .slider { background-color: #059669; border-color: #10b981; }
         input:checked + .slider:before { transform: translateX(26px); background-color: white; }
         
-        /* Checkbox Style */
         .custom-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #ef4444; }
 
         #onlineList { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 100px; overflow-y: auto; padding: 5px; }
@@ -330,7 +329,28 @@
             } catch (e) { alert(e.message); }
         }
 
-        // --- FUNÇÕES DE SELEÇÃO MÚLTIPLA ---
+        // --- RESTAURADO: ALTERNA ENTRE LOGIN E CADASTRO ---
+        function toggleAuthMode() {
+            isRegisterMode = !isRegisterMode;
+            document.getElementById('registerFields').classList.toggle('hidden');
+            document.getElementById('mainBtn').innerText = isRegisterMode ? "Cadastrar" : "Entrar";
+            document.getElementById('toggleBtn').innerText = isRegisterMode ? "Já tenho conta" : "Criar Nova Conta";
+        }
+
+        function resetPassword() {
+            const email = document.getElementById('userEmail').value.trim();
+            if (!email) return alert("Digite o e-mail no campo antes de clicar aqui!");
+            auth.sendPasswordResetEmail(email)
+                .then(() => alert("Link enviado! Verifique sua caixa de entrada e SPAM."))
+                .catch(e => alert("Erro: " + e.message));
+        }
+
+        function adminResetLink(email) {
+            auth.sendPasswordResetEmail(email).then(() => {
+                alert(`Link de redefinição enviado para: ${email}`);
+            }).catch(e => alert("Erro: " + e.message));
+        }
+
         function toggleSelectAll(master) {
             const boxes = document.querySelectorAll('.report-checkbox');
             boxes.forEach(b => b.checked = master.checked);
@@ -354,7 +374,6 @@
             updateMultiDeleteButton();
         }
 
-        // --- FUNÇÕES DE CARREGAMENTO ---
         function loadReports() {
             const search = document.getElementById('searchEnemy').value.toUpperCase(), filter = document.getElementById('filterStatusMural').value;
             db.collection("reports").orderBy("timestamp", "desc").onSnapshot(snap => {
@@ -400,7 +419,6 @@
             } catch(e){ alert("Erro: " + e.message); btn.disabled = false; btn.innerText = "Transmitir KS"; }
         }
 
-        // --- SISTEMA HUNTED (EDIÇÃO E PRIORIDADE) ---
         function loadHunteds() {
             const search = document.getElementById('searchHunted').value.toUpperCase();
             db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => {
@@ -440,7 +458,6 @@
             toggleHuntedForm();
         }
 
-        // --- SISTEMA BASE ---
         async function upload(f) { if(!f) return null; const ref = storage.ref(`provas/${Date.now()}_${f.name}`); await ref.put(f); return await ref.getDownloadURL(); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         function clearPrints() { document.getElementById('imgStart').value = ""; document.getElementById('imgEnd').value = ""; resetPasteButtons(); activeInputId = null; }
@@ -451,7 +468,32 @@
         function setupPresence(u) { presenceRef = rtdb.ref('/status/'+u); presenceRef.set({ isOnline: true, nick: currentNick }); presenceRef.onDisconnect().set({ isOnline: false, nick: currentNick }); }
         async function toggleOnlineStatus() { const c = document.getElementById('statusToggle').checked; if(presenceRef) await presenceRef.update({ isOnline: c }); await db.collection("users").doc(currentUID).update({ isOnline: c }); }
         function monitorOnline() { rtdb.ref('/status').on('value', s => { const d = document.getElementById('onlineList'); d.innerHTML = ''; s.forEach(c => { const val = c.val(); if(val && val.isOnline) d.innerHTML += `<span class="bg-slate-800 px-4 py-2 rounded-lg border-2 border-green-500/20 text-green-400 shadow-sm text-sm">● ${val.nick}</span>`; }); }); }
-        function loadUsers() { db.collection("users").onSnapshot(s => { const b = document.getElementById('usersTableBody'); b.innerHTML = ""; s.forEach(d => { const u = d.data(); const isP = u.status === 'pendente'; b.innerHTML += `<tr class="border-b border-slate-800/50"><td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td><td class="p-4"><span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td><td class="p-4 text-right space-x-4">${isP?`<button onclick="db.collection('users').doc('${d.id}').update({status:'aprovado'})" class="bg-green-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">OK</button>`:''}<button onclick="db.collection('users').doc('${d.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-4 py-2 rounded-xl font-bold uppercase text-sm">CARGO</button><button onclick="if(confirm('Banir?'))db.collection('users').doc('${d.id}').delete()" class="bg-red-900 px-4 py-2 rounded-xl font-bold uppercase text-sm">X</button></td></tr>`; }); }); }
+        
+        function loadUsers() { 
+            db.collection("users").onSnapshot(s => { 
+                const b = document.getElementById('usersTableBody'); 
+                b.innerHTML = ""; 
+                s.forEach(d => { 
+                    const u = d.data(); 
+                    const isP = u.status === 'pendente'; 
+                    b.innerHTML += `
+                    <tr class="border-b border-slate-800/50">
+                        <td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td>
+                        <td class="p-4">
+                            <span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> 
+                            <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span>
+                        </td>
+                        <td class="p-4 text-right space-x-2">
+                            ${isP?`<button onclick="db.collection('users').doc('${d.id}').update({status:'aprovado'})" class="bg-green-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">OK</button>`:''}
+                            <button onclick="adminResetLink('${u.email}')" title="Resetar Senha" class="bg-yellow-600 px-3 py-2 rounded-xl font-bold text-xs">🔁</button>
+                            <button onclick="db.collection('users').doc('${d.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">CARGO</button>
+                            <button onclick="if(confirm('Banir?'))db.collection('users').doc('${d.id}').delete()" class="bg-red-900 px-3 py-2 rounded-xl font-bold text-xs">X</button>
+                        </td>
+                    </tr>`; 
+                }); 
+            }); 
+        }
+
         function openEditModal(id, s, p, r) { currentReportId = id; document.getElementById('editStatus').value = s; document.getElementById('editPoints').value = p || 0; document.getElementById('editReason').value = r || ''; toggleReasonField(); document.getElementById('editModal').style.display = 'flex'; }
         function toggleReasonField() { document.getElementById('reasonDiv').style.display = document.getElementById('editStatus').value === 'Recusado' ? 'block' : 'none'; }
         async function saveEdit() { await db.collection("reports").doc(currentReportId).update({ status: document.getElementById('editStatus').value, points: parseInt(document.getElementById('editPoints').value || 0), reason: document.getElementById('editStatus').value === 'Recusado' ? document.getElementById('editReason').value.trim() : "" }); closeModal('editModal'); }
@@ -460,7 +502,6 @@
         function logout() { auth.signOut(); location.reload(); }
         function openZoom(u) { document.getElementById('modalImg').src = u; document.getElementById('zoomModal').style.display = 'flex'; }
         async function cleanupOldReports() { const limit = new Date(); limit.setDate(limit.getDate() - 30); const snap = await db.collection("reports").where("timestamp", "<", limit).get(); snap.forEach(doc => db.collection("reports").doc(doc.id).delete()); }
-        function resetPassword() { const e = document.getElementById('userEmail').value.trim(); if(e) auth.sendPasswordResetEmail(e).then(() => alert("Link enviado!")); }
         function generateWarReport() { const s = document.getElementById('filterStart').value, e = document.getElementById('filterEnd').value; if(!s || !e) return alert("Datas!"); db.collection("reports").where("status", "==", "Aprovado").get().then(snap => { let ms = {}, to = 0, tp = 0; snap.forEach(doc => { const r = doc.data(), d = r.timestamp.toDate().toISOString().split('T')[0]; if(d >= s && d <= e) { to++; tp += r.points; ms[r.reporter] = (ms[r.reporter] || 0) + r.points; } }); if(to === 0) return alert("Sem registros!"); let l = `⚔️ **NEW ORDER AUDIT** ⚔️\n📅 **PERÍODO:** ${s} a ${e}\n📊 **TOTAL:** ${to} Ops | ${tp} pts\n\n🏆 **RANKING:**\n`; Object.entries(ms).sort((a,b)=>b[1]-a[1]).forEach(([n,p],i)=> l += `${i+1}. ${n}: ${p} pts\n`); navigator.clipboard.writeText(l).then(() => alert("COPIADO!")); }); }
     </script>
 </body>
