@@ -42,7 +42,9 @@
             .adm-tool.flex { flex-direction: column; width: 100%; }
         }
         .paste-btn-active { border: 2px solid #ef4444 !important; background: rgba(239, 68, 68, 0.2) !important; color: #ef4444 !important; }
-        .pending-alert { animation: pulse-yellow 1.5s infinite !important; background-color: #eab308 !important; color: black !important; }
+        
+        /* Efeito de alerta pulsante para membros pendentes */
+        .pending-alert { animation: pulse-yellow 1.5s infinite !important; background-color: #eab308 !important; color: black !important; border: none !important; }
         @keyframes pulse-yellow { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
     </style>
 </head>
@@ -186,7 +188,10 @@
                                     <input type="file" id="imgEnd" accept="image/*" class="text-xs">
                                     <button id="btnPaste2" onclick="handlePasteAction('imgEnd', this)" class="w-full bg-slate-800 border-2 border-slate-600 py-3 rounded-lg font-bold uppercase text-[10px] hover:border-red-500 transition shadow-lg">Colar (Ctrl+V)</button>
                                 </div>
-                                <button onclick="clearPrints()" class="w-full text-slate-500 text-xs font-bold uppercase hover:text-white transition">Limpar Prints</button>
+                                <div class="flex gap-2">
+                                    <button onclick="clearPrints()" class="flex-1 text-slate-500 text-[10px] font-bold uppercase hover:text-white transition">Limpar Prints</button>
+                                    <button onclick="clearAllForm()" class="flex-1 text-red-500 text-[10px] font-bold uppercase hover:text-red-400 transition">Limpar Tudo</button>
+                                </div>
                             </div>
                             <button id="sendBtn" onclick="sendReport()" class="w-full bg-green-600 hover:bg-green-700 py-5 rounded-xl font-bold uppercase text-lg shadow-xl transition">Transmitir KS</button>
                         </div>
@@ -329,7 +334,6 @@
             } catch (e) { alert(e.message); }
         }
 
-        // --- RESTAURADO: ALTERNA ENTRE LOGIN E CADASTRO ---
         function toggleAuthMode() {
             isRegisterMode = !isRegisterMode;
             document.getElementById('registerFields').classList.toggle('hidden');
@@ -415,7 +419,11 @@
                     timeE: document.getElementById('timeEnd').value, imgStart: u1, imgEnd: u2,
                     status: "Pendente", points: 0, timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                alert("Transmitido com sucesso!"); location.reload();
+                alert("Transmitido com sucesso!");
+                clearAllForm();
+                btn.disabled = false;
+                btn.innerText = "Transmitir KS";
+                location.reload();
             } catch(e){ alert("Erro: " + e.message); btn.disabled = false; btn.innerText = "Transmitir KS"; }
         }
 
@@ -460,7 +468,24 @@
 
         async function upload(f) { if(!f) return null; const ref = storage.ref(`provas/${Date.now()}_${f.name}`); await ref.put(f); return await ref.getDownloadURL(); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function clearPrints() { document.getElementById('imgStart').value = ""; document.getElementById('imgEnd').value = ""; resetPasteButtons(); activeInputId = null; }
+        
+        // Limpar apenas prints
+        function clearPrints() { 
+            document.getElementById('imgStart').value = ""; 
+            document.getElementById('imgEnd').value = ""; 
+            resetPasteButtons(); 
+            activeInputId = null; 
+        }
+
+        // Limpar formulário inteiro (Sugestão do Nando)
+        function clearAllForm() {
+            document.getElementById('enemyName').value = "";
+            document.getElementById('respawn').value = "";
+            document.getElementById('timeStart').value = "";
+            document.getElementById('timeEnd').value = "";
+            clearPrints();
+        }
+
         function resetPasteButtons() { ['btnPaste1', 'btnPaste2'].forEach(id => { const b = document.getElementById(id); b.innerText = "Colar (Ctrl+V)"; b.classList.remove('paste-btn-active'); b.style.background = ""; }); }
         async function handlePasteAction(i, b) { try { const clip = await navigator.clipboard.read(); for(const item of clip) { for(const type of item.types) { if(type.startsWith('image/')) { const blob = await item.getType(type); const dt = new DataTransfer(); dt.items.add(new File([blob], "p.png", {type})); document.getElementById(i).files = dt.files; b.innerText = "FOTO OK!"; b.style.background = "#059669"; return; } } } activatePasteFallback(i, b); } catch(e) { activatePasteFallback(i, b); } }
         function activatePasteFallback(i, b) { resetPasteButtons(); activeInputId = i; activeBtn = b; b.classList.add('paste-btn-active'); b.innerText = "AGUARDANDO CTRL+V..."; }
@@ -473,9 +498,13 @@
             db.collection("users").onSnapshot(s => { 
                 const b = document.getElementById('usersTableBody'); 
                 b.innerHTML = ""; 
+                let hasPending = false; // Variável para verificar pendentes
+                
                 s.forEach(d => { 
                     const u = d.data(); 
                     const isP = u.status === 'pendente'; 
+                    if(isP) hasPending = true; // Se achar um pendente, ativa o alerta
+                    
                     b.innerHTML += `
                     <tr class="border-b border-slate-800/50">
                         <td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td>
@@ -491,6 +520,16 @@
                         </td>
                     </tr>`; 
                 }); 
+
+                // Lógica do alerta no botão Membros
+                const memberBtn = document.getElementById('memberManageBtn');
+                if(hasPending) {
+                    memberBtn.classList.add('pending-alert');
+                    memberBtn.innerText = "Membros (!!!)";
+                } else {
+                    memberBtn.classList.remove('pending-alert');
+                    memberBtn.innerText = "Membros";
+                }
             }); 
         }
 
