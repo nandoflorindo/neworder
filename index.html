@@ -43,7 +43,6 @@
         }
         .paste-btn-active { border: 2px solid #ef4444 !important; background: rgba(239, 68, 68, 0.2) !important; color: #ef4444 !important; }
         
-        /* Efeito de alerta pulsante para membros pendentes */
         .pending-alert { animation: pulse-yellow 1.5s infinite !important; background-color: #eab308 !important; color: black !important; border: none !important; }
         @keyframes pulse-yellow { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
     </style>
@@ -257,7 +256,14 @@
 
                         <div class="overflow-x-auto text-white">
                             <table class="w-full text-left text-base min-w-[250px]">
-                                <thead class="border-b-2 border-slate-800"><tr class="text-slate-500 uppercase text-xs"><th>Nick</th><th class="text-center">Lvl</th><th class="text-center">Voc</th><th class="text-right adm-tool hidden">Ação</th></tr></thead>
+                                <thead class="border-b-2 border-slate-800">
+                                    <tr class="text-slate-500 uppercase text-xs">
+                                        <th class="cursor-pointer hover:text-white" onclick="setHuntedSort('nick')">Nick ⇅</th>
+                                        <th class="text-center cursor-pointer hover:text-white" onclick="setHuntedSort('lvl')">Lvl ⇅</th>
+                                        <th class="text-center">Voc</th>
+                                        <th class="text-right adm-tool hidden">Ação</th>
+                                    </tr>
+                                </thead>
                                 <tbody id="huntedBody"></tbody>
                             </table>
                         </div>
@@ -288,6 +294,10 @@
         let activeInputId = null, activeBtn = null;
         let currentReportId = null;
         let presenceRef = null;
+        
+        // Variáveis de ordenação da Hunted List
+        let huntedSortField = 'nick';
+        let huntedSortOrder = 'asc';
 
         auth.onAuthStateChanged(async (user) => {
             if (user) {
@@ -323,7 +333,7 @@
         });
 
         async function handleAuth() {
-            const email = document.getElementById('userEmail').value, pass = document.getElementById('userPass').value, nick = document.getElementById('userNickRegister').value, btn = document.getElementById('mainBtn');
+            const email = document.getElementById('userEmail').value, pass = document.getElementById('userPass').value, nick = document.getElementById('userNickRegister').value;
             if(!email || !pass) return;
             try {
                 if (isRegisterMode) {
@@ -351,7 +361,7 @@
 
         function adminResetLink(email) {
             auth.sendPasswordResetEmail(email).then(() => {
-                alert(`Link de redefinição enviado para: ${email}`);
+                alert(`Link enviado para: ${email}`);
             }).catch(e => alert("Erro: " + e.message));
         }
 
@@ -419,17 +429,27 @@
                     timeE: document.getElementById('timeEnd').value, imgStart: u1, imgEnd: u2,
                     status: "Pendente", points: 0, timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                alert("Transmitido com sucesso!");
+                alert("Transmitido!");
                 clearAllForm();
                 btn.disabled = false;
                 btn.innerText = "Transmitir KS";
-                location.reload();
             } catch(e){ alert("Erro: " + e.message); btn.disabled = false; btn.innerText = "Transmitir KS"; }
+        }
+
+        // Função para mudar a ordenação da Hunted List
+        function setHuntedSort(field) {
+            if (huntedSortField === field) {
+                huntedSortOrder = huntedSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                huntedSortField = field;
+                huntedSortOrder = field === 'lvl' ? 'desc' : 'asc';
+            }
+            loadHunteds();
         }
 
         function loadHunteds() {
             const search = document.getElementById('searchHunted').value.toUpperCase();
-            db.collection("hunteds").orderBy("nick", "asc").onSnapshot(snap => {
+            db.collection("hunteds").orderBy(huntedSortField, huntedSortOrder).onSnapshot(snap => {
                 const tbody = document.getElementById('huntedBody'); tbody.innerHTML = "";
                 snap.forEach(doc => {
                     const h = doc.data();
@@ -455,13 +475,13 @@
 
         async function updateHuntedLevel(id, currentLvl) {
             if(!isAdmin) return;
-            const newLvl = prompt("Atualizar Level de " + currentLvl + " para:", currentLvl);
+            const newLvl = prompt("Atualizar Level:", currentLvl);
             if(newLvl && !isNaN(newLvl)) { await db.collection("hunteds").doc(id).update({ lvl: parseInt(newLvl) }); }
         }
 
         async function addHunted() {
             const n = document.getElementById('hNick').value.trim().toUpperCase(), l = parseInt(document.getElementById('hLevel').value), v = document.getElementById('hVoc').value;
-            if(!n || isNaN(l)) return alert("Preencha nick e level!");
+            if(!n || isNaN(l)) return alert("Nick e Level!");
             await db.collection("hunteds").add({ nick: n, lvl: l, voc: v, priority: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
             toggleHuntedForm();
         }
@@ -469,7 +489,6 @@
         async function upload(f) { if(!f) return null; const ref = storage.ref(`provas/${Date.now()}_${f.name}`); await ref.put(f); return await ref.getDownloadURL(); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         
-        // Limpar apenas prints
         function clearPrints() { 
             document.getElementById('imgStart').value = ""; 
             document.getElementById('imgEnd').value = ""; 
@@ -477,7 +496,6 @@
             activeInputId = null; 
         }
 
-        // Limpar formulário inteiro (Sugestão do Nando)
         function clearAllForm() {
             document.getElementById('enemyName').value = "";
             document.getElementById('respawn').value = "";
@@ -498,30 +516,13 @@
             db.collection("users").onSnapshot(s => { 
                 const b = document.getElementById('usersTableBody'); 
                 b.innerHTML = ""; 
-                let hasPending = false; // Variável para verificar pendentes
-                
+                let hasPending = false;
                 s.forEach(d => { 
                     const u = d.data(); 
                     const isP = u.status === 'pendente'; 
-                    if(isP) hasPending = true; // Se achar um pendente, ativa o alerta
-                    
-                    b.innerHTML += `
-                    <tr class="border-b border-slate-800/50">
-                        <td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td>
-                        <td class="p-4">
-                            <span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> 
-                            <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span>
-                        </td>
-                        <td class="p-4 text-right space-x-2">
-                            ${isP?`<button onclick="db.collection('users').doc('${d.id}').update({status:'aprovado'})" class="bg-green-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">OK</button>`:''}
-                            <button onclick="adminResetLink('${u.email}')" title="Resetar Senha" class="bg-yellow-600 px-3 py-2 rounded-xl font-bold text-xs">🔁</button>
-                            <button onclick="db.collection('users').doc('${d.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">CARGO</button>
-                            <button onclick="if(confirm('Banir?'))db.collection('users').doc('${d.id}').delete()" class="bg-red-900 px-3 py-2 rounded-xl font-bold text-xs">X</button>
-                        </td>
-                    </tr>`; 
+                    if(isP) hasPending = true;
+                    b.innerHTML += `<tr class="border-b border-slate-800/50"><td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td><td class="p-4"><span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td><td class="p-4 text-right space-x-2">${isP?`<button onclick="db.collection('users').doc('${d.id}').update({status:'aprovado'})" class="bg-green-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">OK</button>`:''}<button onclick="adminResetLink('${u.email}')" title="Resetar Senha" class="bg-yellow-600 px-3 py-2 rounded-xl font-bold text-xs">🔁</button><button onclick="db.collection('users').doc('${d.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">CARGO</button><button onclick="if(confirm('Banir?'))db.collection('users').doc('${d.id}').delete()" class="bg-red-900 px-3 py-2 rounded-xl font-bold text-xs">X</button></td></tr>`; 
                 }); 
-
-                // Lógica do alerta no botão Membros
                 const memberBtn = document.getElementById('memberManageBtn');
                 if(hasPending) {
                     memberBtn.classList.add('pending-alert');
