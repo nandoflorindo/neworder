@@ -436,7 +436,6 @@
             } catch(e){ alert("Erro: " + e.message); btn.disabled = false; btn.innerText = "Transmitir KS"; }
         }
 
-        // Função para mudar a ordenação da Hunted List
         function setHuntedSort(field) {
             if (huntedSortField === field) {
                 huntedSortOrder = huntedSortOrder === 'asc' ? 'desc' : 'asc';
@@ -521,7 +520,16 @@
                     const u = d.data(); 
                     const isP = u.status === 'pendente'; 
                     if(isP) hasPending = true;
-                    b.innerHTML += `<tr class="border-b border-slate-800/50"><td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td><td class="p-4"><span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td><td class="p-4 text-right space-x-2">${isP?`<button onclick="db.collection('users').doc('${d.id}').update({status:'aprovado'})" class="bg-green-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">OK</button>`:''}<button onclick="adminResetLink('${u.email}')" title="Resetar Senha" class="bg-yellow-600 px-3 py-2 rounded-xl font-bold text-xs">🔁</button><button onclick="db.collection('users').doc('${d.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">CARGO</button><button onclick="if(confirm('Banir?'))db.collection('users').doc('${d.id}').delete()" class="bg-red-900 px-3 py-2 rounded-xl font-bold text-xs">X</button></td></tr>`; 
+                    b.innerHTML += `<tr class="border-b border-slate-800/50">
+                        <td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td>
+                        <td class="p-4"><span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td>
+                        <td class="p-4 text-right space-x-2">
+                            ${isP?`<button onclick="db.collection('users').doc('${d.id}').update({status:'aprovado'})" class="bg-green-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">OK</button>`:''}
+                            <button onclick="editNick('${d.id}', '${u.nick}')" title="Editar Nome" class="bg-indigo-600 px-3 py-2 rounded-xl font-bold text-xs">✎</button>
+                            <button onclick="adminResetLink('${u.email}')" title="Resetar Senha" class="bg-yellow-600 px-3 py-2 rounded-xl font-bold text-xs">🔁</button>
+                            <button onclick="db.collection('users').doc('${d.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">CARGO</button>
+                            <button onclick="if(confirm('Banir?'))db.collection('users').doc('${d.id}').delete()" class="bg-red-900 px-3 py-2 rounded-xl font-bold text-xs">X</button>
+                        </td></tr>`; 
                 }); 
                 const memberBtn = document.getElementById('memberManageBtn');
                 if(hasPending) {
@@ -532,6 +540,16 @@
                     memberBtn.innerText = "Membros";
                 }
             }); 
+        }
+
+        async function editNick(id, oldNick) {
+            const newNick = prompt("Novo Nick do Char:", oldNick);
+            if(newNick && newNick.trim() !== "") {
+                try {
+                    await db.collection("users").doc(id).update({ nick: newNick.trim() });
+                    alert("Nick atualizado!");
+                } catch(e) { alert("Erro ao atualizar: " + e.message); }
+            }
         }
 
         function openEditModal(id, s, p, r) { currentReportId = id; document.getElementById('editStatus').value = s; document.getElementById('editPoints').value = p || 0; document.getElementById('editReason').value = r || ''; toggleReasonField(); document.getElementById('editModal').style.display = 'flex'; }
