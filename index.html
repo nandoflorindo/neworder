@@ -42,9 +42,6 @@
             .adm-tool.flex { flex-direction: column; width: 100%; }
         }
         .paste-btn-active { border: 2px solid #ef4444 !important; background: rgba(239, 68, 68, 0.2) !important; color: #ef4444 !important; }
-        
-        .pending-alert { animation: pulse-yellow 1.5s infinite !important; background-color: #eab308 !important; color: black !important; border: none !important; }
-        @keyframes pulse-yellow { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
     </style>
 </head>
 <body class="p-4 md:p-10">
@@ -64,32 +61,60 @@
                 <p class="flex items-center gap-3"><span class="text-red-500 text-2xl">•</span> Kills aparecendo no Analyzer</p>
                 <p class="flex items-center gap-3"><span class="text-red-500 text-2xl">•</span> Print de início + Tempo total</p>
             </div>
-            <button onclick="closeModal('welcomeModal')" class="w-full bg-red-600 py-5 rounded-xl font-bold uppercase text-xl hover:bg-red-500 transition">Entredi as Regras</button>
+            <button onclick="closeModal('welcomeModal')" class="w-full bg-red-600 py-5 rounded-xl font-bold uppercase text-xl hover:bg-red-500 transition">Entendi as Regras</button>
         </div>
     </div>
 
     <div id="editModal" class="modal">
         <div class="glass p-6 md:p-8 w-full max-w-lg space-y-6 border-t-4 border-red-600">
             <h3 class="text-2xl font-bold uppercase text-red-500 italic">Analisar KS</h3>
-            <div>
-                <label class="text-xs uppercase font-bold text-slate-500">Decisão</label>
-                <select id="editStatus" class="w-full" onchange="toggleReasonField()">
-                    <option value="Pendente">Pendente</option>
-                    <option value="Aprovado">Aprovado</option>
-                    <option value="Recusado">Recusado</option>
-                </select>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs uppercase font-bold text-slate-500">Decisão</label>
+                    <select id="editStatus" class="w-full" onchange="toggleReasonField()">
+                        <option value="Pendente">Pendente</option>
+                        <option value="Aprovado">Aprovado</option>
+                        <option value="Recusado">Recusado</option>
+                    </select>
+                </div>
+
+                <div id="reasonDiv" class="hidden">
+                    <label class="text-xs uppercase font-bold text-slate-500">Motivo da Recusa</label>
+                    <textarea id="editReason" class="w-full h-24" placeholder="Explique o erro..."></textarea>
+                </div>
+
+                <div class="border-t border-slate-700 pt-4">
+                    <label class="text-xs uppercase font-bold text-slate-500 block mb-2 text-center">Tempo de Duração do KS</label>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <span class="text-[10px] text-slate-500 uppercase font-bold">Horas</span>
+                            <input type="number" id="editDurationHours" value="0" min="0" oninput="calculateProportionalPoints()">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-500 uppercase font-bold">Minutos</span>
+                            <input type="number" id="editDurationMinutes" value="0" min="0" max="59" oninput="calculateProportionalPoints()">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 bg-slate-900/50 rounded-xl border border-slate-700 mb-4">
+                        <label class="text-xs uppercase font-bold text-yellow-500">Alvo Prioritário (2x)?</label>
+                        <label class="switch">
+                            <input type="checkbox" id="editPriority" onchange="calculateProportionalPoints()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div>
+                        <label class="text-xs uppercase font-bold text-slate-500">Pontuação Final</label>
+                        <input type="number" id="editPoints" step="0.01" class="w-full text-center text-xl font-bold text-green-500" placeholder="0.00">
+                    </div>
+                </div>
             </div>
-            <div id="reasonDiv" class="hidden">
-                <label class="text-xs uppercase font-bold text-slate-500">Motivo da Recusa</label>
-                <textarea id="editReason" class="w-full h-28" placeholder="Explique o erro..."></textarea>
-            </div>
-            <div>
-                <label class="text-xs uppercase font-bold text-slate-500">Pontuação</label>
-                <input type="number" id="editPoints" class="w-full">
-            </div>
+
             <div class="flex gap-4 pt-3">
-                <button onclick="saveEdit()" class="flex-1 bg-green-600 py-4 rounded-xl font-bold uppercase">Confirmar</button>
-                <button onclick="closeModal('editModal')" class="flex-1 bg-slate-800 py-4 rounded-xl font-bold uppercase">Cancelar</button>
+                <button onclick="saveEdit()" class="flex-1 bg-green-600 py-4 rounded-xl font-bold uppercase hover:bg-green-500 transition">Confirmar</button>
+                <button onclick="closeModal('editModal')" class="flex-1 bg-slate-800 py-4 rounded-xl font-bold uppercase hover:bg-slate-700 transition">Cancelar</button>
             </div>
         </div>
     </div>
@@ -97,7 +122,7 @@
     <div class="w-full max-w-[2000px] mx-auto">
         <div id="waitScreen" class="hidden max-w-lg mx-auto mt-20 glass p-10 text-center border-t-4 border-yellow-600 shadow-2xl">
             <h2 class="text-3xl md:text-5xl font-bold text-yellow-500 mb-8 uppercase italic">Acesso Restrito</h2>
-            <p class="text-xl text-slate-400 mb-10">Aguarde a aprovação.</p>
+            <p class="text-xl text-slate-400 mb-10">Aguarde a aprovação de um administrador.</p>
             <button onclick="logout()" class="text-blue-400 underline uppercase text-sm">Sair da Conta</button>
         </div>
 
@@ -131,10 +156,12 @@
                         </div>
                     </div>
                 </div>
+                
                 <div class="glass p-5 border-slate-700 border-2 min-w-full md:min-w-[380px] shadow-lg">
                     <h3 class="text-sm font-bold text-slate-500 uppercase mb-3 italic border-b-2 border-slate-800/50 pb-2">Ativo no KS:</h3>
                     <div id="onlineList"></div>
                 </div>
+
                 <div class="flex flex-wrap justify-center gap-4">
                     <div class="adm-tool hidden flex gap-4">
                         <input type="date" id="filterStart" class="h-12 w-32 md:w-auto">
@@ -156,26 +183,11 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 <div class="lg:col-span-3 space-y-10 order-2 lg:order-1">
                     <div class="glass p-6 md:p-10 border-l-8 border-red-600 shadow-2xl">
-                        <div class="mb-8 p-4 bg-red-900/10 border border-red-900/30 rounded-xl">
-                            <h3 class="text-sm font-bold text-red-500 uppercase mb-3 italic">⚠️ Regras de Aceite:</h3>
-                            <ul class="text-[11px] text-slate-400 space-y-1 uppercase font-bold">
-                                <li>• Print da tela inteira</li>
-                                <li>• Char visível</li>
-                                <li>• Hunt Analyzer Zerado</li>
-                                <li>• XP e Supply Visível</li>
-                                <li>• Quantidade de Kills</li>
-                                <li>• Print de início + Tempo total</li>
-                            </ul>
-                        </div>
-
                         <h2 class="text-2xl md:text-3xl font-bold mb-8 text-red-500 uppercase italic border-b-2 border-red-900/20 pb-4">Reportar KS</h2>
                         <div class="space-y-6">
                             <input type="text" id="enemyName" placeholder="Nick Inimigo">
                             <input type="text" id="respawn" placeholder="Hunt / Local">
-                            <div class="grid grid-cols-2 gap-4">
-                                <input type="time" id="timeStart">
-                                <input type="time" id="timeEnd">
-                            </div>
+                            
                             <div class="p-4 md:p-6 bg-slate-900/50 rounded-xl border-2 border-slate-700 space-y-5">
                                 <div class="space-y-3">
                                     <label class="text-xs font-bold text-slate-500 uppercase">Print 1</label>
@@ -195,6 +207,7 @@
                             <button id="sendBtn" onclick="sendReport()" class="w-full bg-green-600 hover:bg-green-700 py-5 rounded-xl font-bold uppercase text-lg shadow-xl transition">Transmitir KS</button>
                         </div>
                     </div>
+                    
                     <div class="glass p-6 adm-tool hidden shadow-lg">
                         <h2 class="text-xl font-bold text-yellow-500 uppercase border-b-2 border-yellow-900/30 pb-4 mb-8">Top 10</h2>
                         <div id="ranking" class="space-y-4"></div>
@@ -223,7 +236,7 @@
                                 <thead class="border-b-2 border-slate-800">
                                     <tr>
                                         <th class="p-4 adm-tool hidden"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" class="custom-checkbox"></th>
-                                        <th class="p-4">Data</th>
+                                        <th class="p-4">Data/Hora</th>
                                         <th class="p-4">Alvo/Local</th>
                                         <th class="p-4">Nick</th>
                                         <th class="p-4 text-center">Pts</th>
@@ -294,8 +307,6 @@
         let activeInputId = null, activeBtn = null;
         let currentReportId = null;
         let presenceRef = null;
-        
-        // Variáveis de ordenação da Hunted List
         let huntedSortField = 'nick';
         let huntedSortOrder = 'asc';
 
@@ -323,7 +334,6 @@
                     if (isAdmin) {
                         document.querySelectorAll('.adm-tool').forEach(t => t.classList.remove('hidden'));
                         loadUsers();
-                        cleanupOldReports();
                     }
                 }
             } else {
@@ -344,63 +354,25 @@
             } catch (e) { alert(e.message); }
         }
 
-        function toggleAuthMode() {
-            isRegisterMode = !isRegisterMode;
-            document.getElementById('registerFields').classList.toggle('hidden');
-            document.getElementById('mainBtn').innerText = isRegisterMode ? "Cadastrar" : "Entrar";
-            document.getElementById('toggleBtn').innerText = isRegisterMode ? "Já tenho conta" : "Criar Nova Conta";
-        }
-
-        function resetPassword() {
-            const email = document.getElementById('userEmail').value.trim();
-            if (!email) return alert("Digite o e-mail no campo antes de clicar aqui!");
-            auth.sendPasswordResetEmail(email)
-                .then(() => alert("Link enviado! Verifique sua caixa de entrada e SPAM."))
-                .catch(e => alert("Erro: " + e.message));
-        }
-
-        function adminResetLink(email) {
-            auth.sendPasswordResetEmail(email).then(() => {
-                alert(`Link enviado para: ${email}`);
-            }).catch(e => alert("Erro: " + e.message));
-        }
-
-        function toggleSelectAll(master) {
-            const boxes = document.querySelectorAll('.report-checkbox');
-            boxes.forEach(b => b.checked = master.checked);
-            updateMultiDeleteButton();
-        }
-
-        function updateMultiDeleteButton() {
-            const selected = document.querySelectorAll('.report-checkbox:checked').length;
-            const btn = document.getElementById('multiDeleteBtn');
-            if (selected > 0 && isAdmin) {
-                btn.classList.remove('hidden');
-                btn.innerText = `Apagar ${selected} itens`;
-            } else { btn.classList.add('hidden'); }
-        }
-
-        async function deleteSelectedReports() {
-            if (!confirm("Deseja apagar TODOS os itens selecionados?")) return;
-            const boxes = document.querySelectorAll('.report-checkbox:checked');
-            for (let box of boxes) { await db.collection("reports").doc(box.getAttribute('data-id')).delete(); }
-            document.getElementById('selectAll').checked = false;
-            updateMultiDeleteButton();
-        }
-
         function loadReports() {
             const search = document.getElementById('searchEnemy').value.toUpperCase(), filter = document.getElementById('filterStatusMural').value;
             db.collection("reports").orderBy("timestamp", "desc").onSnapshot(snap => {
                 const tbody = document.getElementById('reportsBody'); tbody.innerHTML = ""; let sc = {};
                 snap.forEach(doc => {
-                    const r = doc.data(); if(r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
+                    const r = doc.data(); 
+                    if(r.status === "Aprovado") sc[r.reporter] = (sc[r.reporter] || 0) + (r.points || 0);
+                    
                     if ((isAdmin || r.status !== "Pendente" || r.reporter === currentNick) && (!search || r.enemy.includes(search)) && (filter === "Todos" || r.status === filter)) {
+                        const dateObj = r.timestamp?.toDate();
+                        const dataStr = dateObj ? dateObj.toLocaleDateString() : '';
+                        const horaStr = dateObj ? dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+
                         tbody.innerHTML += `<tr class="hover:bg-slate-800/30">
                             <td class="p-4 adm-tool ${isAdmin?'':'hidden'}"><input type="checkbox" class="report-checkbox custom-checkbox" data-id="${doc.id}" onclick="updateMultiDeleteButton()"></td>
-                            <td class="p-4 text-xs font-bold text-slate-500">${r.timestamp?.toDate().toLocaleDateString() || ''}</td>
+                            <td class="p-4 text-xs font-bold text-slate-500">${dataStr}<br><span class="text-[9px] text-slate-600">${horaStr}</span></td>
                             <td class="p-4"><div class="font-bold text-red-500 uppercase">${r.enemy}</div><div class="text-xs text-slate-400">${r.respawn || ''}</div></td>
                             <td class="p-4 font-bold uppercase italic">${r.reporter}</td>
-                            <td class="p-4 text-center font-bold text-yellow-500">${r.points} pts</td>
+                            <td class="p-4 text-center font-bold text-yellow-500">${r.points.toFixed(2)} pts</td>
                             <td class="p-4 text-center"><button onclick="openZoom('${r.imgStart}')" class="text-blue-500 underline">P1</button> ${r.imgEnd?`<button onclick="openZoom('${r.imgEnd}')" class="text-blue-500 underline ml-2">P2</button>`:''}</td>
                             <td class="p-4 text-right adm-tool ${isAdmin?'':'hidden'} space-x-2">
                                 <button onclick="openEditModal('${doc.id}','${r.status}',${r.points},'${r.reason||''}')" class="text-white">✎</button>
@@ -410,8 +382,46 @@
                 });
                 updateMultiDeleteButton();
                 const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0, 10);
-                document.getElementById('ranking').innerHTML = sorted.map(([n, p], i) => `<div class="flex justify-between p-3 glass ${i<3?'rank-'+(i+1):''}"><span>${i+1}. ${n}</span><span class="font-bold">${p} pts</span></div>`).join('');
+                document.getElementById('ranking').innerHTML = sorted.map(([n, p], i) => `<div class="flex justify-between p-3 glass ${i<3?'rank-'+(i+1):''}"><span>${i+1}. ${n}</span><span class="font-bold">${p.toFixed(2)} pts</span></div>`).join('');
             });
+        }
+
+        // LÓGICA DE CÁLCULO PROPORCIONAL
+        function calculateProportionalPoints() {
+            const h = parseInt(document.getElementById('editDurationHours').value) || 0;
+            const m = parseInt(document.getElementById('editDurationMinutes').value) || 0;
+            const isPriority = document.getElementById('editPriority').checked;
+            
+            // Total em horas decimais
+            const totalHours = h + (m / 60);
+            
+            // Fator multiplicador
+            const multiplier = isPriority ? 2 : 1;
+            
+            const finalPoints = totalHours * multiplier;
+            document.getElementById('editPoints').value = finalPoints.toFixed(2);
+        }
+
+        function openEditModal(id, status, points, reason) {
+            currentReportId = id;
+            document.getElementById('editStatus').value = status;
+            document.getElementById('editPoints').value = points;
+            document.getElementById('editReason').value = reason;
+            document.getElementById('editDurationHours').value = Math.floor(points);
+            document.getElementById('editDurationMinutes').value = 0;
+            document.getElementById('editPriority').checked = false;
+            toggleReasonField();
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        async function saveEdit() {
+            const s = document.getElementById('editStatus').value;
+            const p = parseFloat(document.getElementById('editPoints').value) || 0;
+            const re = document.getElementById('editReason').value;
+            try {
+                await db.collection("reports").doc(currentReportId).update({ status: s, points: p, reason: s==="Recusado"?re:"" });
+                closeModal('editModal');
+            } catch(e) { alert(e.message); }
         }
 
         async function sendReport() {
@@ -425,25 +435,110 @@
                 const u2 = await upload(document.getElementById('imgEnd').files[0]);
                 await db.collection("reports").add({
                     enemy: en.toUpperCase(), respawn: document.getElementById('respawn').value.trim(),
-                    reporter: currentNick, timeS: document.getElementById('timeStart').value,
-                    timeE: document.getElementById('timeEnd').value, imgStart: u1, imgEnd: u2,
+                    reporter: currentNick, imgStart: u1, imgEnd: u2,
                     status: "Pendente", points: 0, timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                alert("Transmitido!");
-                clearAllForm();
-                btn.disabled = false;
-                btn.innerText = "Transmitir KS";
-            } catch(e){ alert("Erro: " + e.message); btn.disabled = false; btn.innerText = "Transmitir KS"; }
+                alert("Transmitido!"); clearAllForm();
+                btn.disabled = false; btn.innerText = "Transmitir KS";
+            } catch(e){ alert(e.message); btn.disabled = false; btn.innerText = "Transmitir KS"; }
         }
 
-        function setHuntedSort(field) {
-            if (huntedSortField === field) {
-                huntedSortOrder = huntedSortOrder === 'asc' ? 'desc' : 'asc';
-            } else {
-                huntedSortField = field;
-                huntedSortOrder = field === 'lvl' ? 'desc' : 'asc';
+        async function upload(file) {
+            if(!file) return "";
+            const ref = storage.ref(`prints/${Date.now()}_${file.name}`);
+            await ref.put(file);
+            return await ref.getDownloadURL();
+        }
+
+        function handlePasteAction(inputId, btn) {
+            activeInputId = inputId; activeBtn = btn;
+            document.querySelectorAll('.paste-btn-active').forEach(b => b.classList.remove('paste-btn-active'));
+            btn.classList.add('paste-btn-active'); btn.innerText = "AGUARDANDO CTRL+V...";
+        }
+
+        window.addEventListener('paste', async (e) => {
+            if (!activeInputId) return;
+            const item = Array.from(e.clipboardData.items).find(x => x.type.startsWith('image'));
+            if (item) {
+                const file = item.getAsFile();
+                const container = new DataTransfer();
+                container.items.add(file);
+                document.getElementById(activeInputId).files = container.files;
+                activeBtn.innerText = "PRINT COLADO!";
+                activeBtn.classList.remove('paste-btn-active');
+                activeInputId = null; activeBtn = null;
             }
-            loadHunteds();
+        });
+
+        function setupPresence(uid) {
+            presenceRef = rtdb.ref(`status/${uid}`);
+            rtdb.ref('.info/connected').on('value', snap => {
+                if (snap.val() === true) {
+                    presenceRef.onDisconnect().set({ isOnline: false, nick: currentNick }).then(() => {
+                        toggleOnlineStatus(); 
+                    });
+                }
+            });
+        }
+
+        function toggleOnlineStatus() {
+            const isChecked = document.getElementById('statusToggle').checked;
+            document.getElementById('statusLabel').innerText = isChecked ? "Online" : "Offline";
+            document.getElementById('statusLabel').className = isChecked ? "text-[10px] font-bold uppercase text-green-500" : "text-[10px] font-bold uppercase text-slate-500";
+            if(presenceRef) presenceRef.set({ isOnline: isChecked, nick: currentNick });
+        }
+
+        function monitorOnline() {
+            rtdb.ref('status').on('value', snap => {
+                const list = document.getElementById('onlineList'); list.innerHTML = "";
+                snap.forEach(child => {
+                    const s = child.val();
+                    if (s.isOnline) list.innerHTML += `<div class="bg-green-500/10 border border-green-500/30 text-green-500 px-2 py-1 rounded text-[10px] font-bold uppercase text-center truncate">${s.nick}</div>`;
+                });
+            });
+        }
+
+        function toggleAuthMode() {
+            isRegisterMode = !isRegisterMode;
+            document.getElementById('registerFields').classList.toggle('hidden');
+            document.getElementById('mainBtn').innerText = isRegisterMode ? "Cadastrar" : "Entrar";
+            document.getElementById('toggleBtn').innerText = isRegisterMode ? "Já tenho conta" : "Criar Nova Conta";
+        }
+
+        function resetPassword() {
+            const email = document.getElementById('userEmail').value.trim();
+            if (!email) return alert("Digite o e-mail no campo antes!");
+            auth.sendPasswordResetEmail(email).then(() => alert("Link enviado!")).catch(e => alert(e.message));
+        }
+
+        function clearAllForm() {
+            document.getElementById('enemyName').value = "";
+            document.getElementById('respawn').value = "";
+            clearPrints();
+        }
+
+        function clearPrints() {
+            document.getElementById('imgStart').value = "";
+            document.getElementById('imgEnd').value = "";
+            document.getElementById('btnPaste1').innerText = "Colar (Ctrl+V)";
+            document.getElementById('btnPaste2').innerText = "Colar (Ctrl+V)";
+        }
+
+        function toggleReasonField() {
+            document.getElementById('reasonDiv').style.display = document.getElementById('editStatus').value === "Recusado" ? 'block' : 'none';
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function showUserPanel() { document.getElementById('userPanel').classList.toggle('hidden'); }
+        function toggleHuntedForm() { document.getElementById('huntedForm').classList.toggle('hidden'); }
+        function logout() { auth.signOut(); location.reload(); }
+        function openZoom(u) { document.getElementById('modalImg').src = u; document.getElementById('zoomModal').style.display = 'flex'; }
+        
+        async function addHunted() {
+            const n = document.getElementById('hNick').value.toUpperCase(), l = parseInt(document.getElementById('hLevel').value), v = document.getElementById('hVoc').value;
+            if(!n || !l) return;
+            await db.collection("hunteds").add({ nick: n, lvl: l, voc: v, priority: false });
+            document.getElementById('hNick').value = ""; document.getElementById('hLevel').value = "";
         }
 
         function loadHunteds() {
@@ -453,114 +548,79 @@
                 snap.forEach(doc => {
                     const h = doc.data();
                     if(!search || h.nick.includes(search)) {
-                        tbody.innerHTML += `<tr class="border-b border-slate-800/50">
-                            <td class="py-4 font-bold uppercase text-lg ${h.priority?'text-yellow-500':'text-red-500'}">
-                                ${h.priority ? '⭐ ' : ''}${h.nick}
-                            </td>
-                            <td class="py-4 text-slate-400 font-bold text-center cursor-pointer hover:text-white" onclick="updateHuntedLevel('${doc.id}', ${h.lvl})">
-                                ${h.lvl || '--'}
-                            </td>
-                            <td class="py-4 text-blue-400 font-bold text-center">${h.voc || '--'}</td>
-                            <td class="py-4 text-right adm-tool ${isAdmin?'':'hidden'} space-x-3">
-                                <button onclick="togglePriority('${doc.id}', ${h.priority || false})" class="text-slate-500 hover:text-yellow-500">⭐</button>
-                                <button onclick="if(confirm('Remover?'))db.collection('hunteds').doc('${doc.id}').delete()" class="text-red-900 font-bold">X</button>
+                        tbody.innerHTML += `<tr class="border-b border-slate-800/50 hover:bg-slate-800/20">
+                            <td class="py-4 font-bold uppercase text-lg ${h.priority?'text-yellow-500':'text-red-500'}">${h.priority ? '⭐ ' : ''}${h.nick}</td>
+                            <td class="text-center font-bold text-slate-400">${h.lvl}</td>
+                            <td class="text-center font-bold text-slate-500 text-xs">${h.voc}</td>
+                            <td class="text-right adm-tool ${isAdmin?'':'hidden'} space-x-2">
+                                <button onclick="db.collection('hunteds').doc('${doc.id}').update({priority:!${h.priority}})" class="text-yellow-500">⭐</button>
+                                <button onclick="db.collection('hunteds').doc('${doc.id}').delete()" class="text-red-900">X</button>
                             </td></tr>`;
                     }
                 });
             });
         }
 
-        async function togglePriority(id, current) { await db.collection("hunteds").doc(id).update({ priority: !current }); }
-
-        async function updateHuntedLevel(id, currentLvl) {
-            if(!isAdmin) return;
-            const newLvl = prompt("Atualizar Level:", currentLvl);
-            if(newLvl && !isNaN(newLvl)) { await db.collection("hunteds").doc(id).update({ lvl: parseInt(newLvl) }); }
+        function setHuntedSort(field) {
+            if (huntedSortField === field) huntedSortOrder = huntedSortOrder === 'asc' ? 'desc' : 'asc';
+            else { huntedSortField = field; huntedSortOrder = field === 'lvl' ? 'desc' : 'asc'; }
+            loadHunteds();
         }
 
-        async function addHunted() {
-            const n = document.getElementById('hNick').value.trim().toUpperCase(), l = parseInt(document.getElementById('hLevel').value), v = document.getElementById('hVoc').value;
-            if(!n || isNaN(l)) return alert("Nick e Level!");
-            await db.collection("hunteds").add({ nick: n, lvl: l, voc: v, priority: false, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-            toggleHuntedForm();
+        function updateMultiDeleteButton() {
+            const selected = document.querySelectorAll('.report-checkbox:checked').length;
+            const btn = document.getElementById('multiDeleteBtn');
+            if (selected > 0 && isAdmin) {
+                btn.classList.remove('hidden'); btn.innerText = `Apagar ${selected} itens`;
+            } else { btn.classList.add('hidden'); }
         }
 
-        async function upload(f) { if(!f) return null; const ref = storage.ref(`provas/${Date.now()}_${f.name}`); await ref.put(f); return await ref.getDownloadURL(); }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        
-        function clearPrints() { 
-            document.getElementById('imgStart').value = ""; 
-            document.getElementById('imgEnd').value = ""; 
-            resetPasteButtons(); 
-            activeInputId = null; 
+        async function deleteSelectedReports() {
+            if (!confirm("Deseja apagar os itens selecionados?")) return;
+            const boxes = document.querySelectorAll('.report-checkbox:checked');
+            for (let box of boxes) { await db.collection("reports").doc(box.getAttribute('data-id')).delete(); }
+            document.getElementById('selectAll').checked = false;
+            updateMultiDeleteButton();
         }
 
-        function clearAllForm() {
-            document.getElementById('enemyName').value = "";
-            document.getElementById('respawn').value = "";
-            document.getElementById('timeStart').value = "";
-            document.getElementById('timeEnd').value = "";
-            clearPrints();
+        function toggleSelectAll(master) {
+            document.querySelectorAll('.report-checkbox').forEach(b => b.checked = master.checked);
+            updateMultiDeleteButton();
         }
 
-        function resetPasteButtons() { ['btnPaste1', 'btnPaste2'].forEach(id => { const b = document.getElementById(id); b.innerText = "Colar (Ctrl+V)"; b.classList.remove('paste-btn-active'); b.style.background = ""; }); }
-        async function handlePasteAction(i, b) { try { const clip = await navigator.clipboard.read(); for(const item of clip) { for(const type of item.types) { if(type.startsWith('image/')) { const blob = await item.getType(type); const dt = new DataTransfer(); dt.items.add(new File([blob], "p.png", {type})); document.getElementById(i).files = dt.files; b.innerText = "FOTO OK!"; b.style.background = "#059669"; return; } } } activatePasteFallback(i, b); } catch(e) { activatePasteFallback(i, b); } }
-        function activatePasteFallback(i, b) { resetPasteButtons(); activeInputId = i; activeBtn = b; b.classList.add('paste-btn-active'); b.innerText = "AGUARDANDO CTRL+V..."; }
-        window.addEventListener('paste', e => { if(!activeInputId) return; const items = (e.clipboardData || e.originalEvent.clipboardData).items; for(let i in items) { if(items[i].kind==='file') { const blob = items[i].getAsFile(); const dt = new DataTransfer(); dt.items.add(blob); document.getElementById(activeInputId).files = dt.files; activeBtn.innerText = "FOTO OK!"; activeBtn.classList.remove('paste-btn-active'); activeBtn.style.background="#059669"; activeInputId=null; } } });
-        function setupPresence(u) { presenceRef = rtdb.ref('/status/'+u); presenceRef.set({ isOnline: true, nick: currentNick }); presenceRef.onDisconnect().set({ isOnline: false, nick: currentNick }); }
-        async function toggleOnlineStatus() { const c = document.getElementById('statusToggle').checked; if(presenceRef) await presenceRef.update({ isOnline: c }); await db.collection("users").doc(currentUID).update({ isOnline: c }); }
-        function monitorOnline() { rtdb.ref('/status').on('value', s => { const d = document.getElementById('onlineList'); d.innerHTML = ''; s.forEach(c => { const val = c.val(); if(val && val.isOnline) d.innerHTML += `<span class="bg-slate-800 px-4 py-2 rounded-lg border-2 border-green-500/20 text-green-400 shadow-sm text-sm">● ${val.nick}</span>`; }); }); }
-        
-        function loadUsers() { 
-            db.collection("users").onSnapshot(s => { 
-                const b = document.getElementById('usersTableBody'); 
-                b.innerHTML = ""; 
-                let hasPending = false;
-                s.forEach(d => { 
-                    const u = d.data(); 
-                    const isP = u.status === 'pendente'; 
-                    if(isP) hasPending = true;
-                    b.innerHTML += `<tr class="border-b border-slate-800/50">
-                        <td class="p-4 font-bold uppercase italic text-xl">${u.nick}</td>
-                        <td class="p-4"><span class="text-base uppercase ${u.role==='admin'?'text-red-500':'text-blue-400'}">${u.role}</span> <span class="text-sm ${isP?'text-yellow-500':'text-green-500'}">[${u.status}]</span></td>
-                        <td class="p-4 text-right space-x-2">
-                            ${isP?`<button onclick="db.collection('users').doc('${d.id}').update({status:'aprovado'})" class="bg-green-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">OK</button>`:''}
-                            <button onclick="editNick('${d.id}', '${u.nick}')" title="Editar Nome" class="bg-indigo-600 px-3 py-2 rounded-xl font-bold text-xs">✎</button>
-                            <button onclick="adminResetLink('${u.email}')" title="Resetar Senha" class="bg-yellow-600 px-3 py-2 rounded-xl font-bold text-xs">🔁</button>
-                            <button onclick="db.collection('users').doc('${d.id}').update({role:'${u.role==='admin'?'member':'admin'}'})" class="bg-blue-600 px-3 py-2 rounded-xl font-bold uppercase text-xs">CARGO</button>
-                            <button onclick="if(confirm('Banir?'))db.collection('users').doc('${d.id}').delete()" class="bg-red-900 px-3 py-2 rounded-xl font-bold text-xs">X</button>
-                        </td></tr>`; 
-                }); 
-                const memberBtn = document.getElementById('memberManageBtn');
-                if(hasPending) {
-                    memberBtn.classList.add('pending-alert');
-                    memberBtn.innerText = "Membros (!!!)";
-                } else {
-                    memberBtn.classList.remove('pending-alert');
-                    memberBtn.innerText = "Membros";
-                }
-            }); 
+        function loadUsers() {
+            db.collection("users").onSnapshot(snap => {
+                const tbody = document.getElementById('usersTableBody'); tbody.innerHTML = "";
+                snap.forEach(doc => {
+                    const u = doc.data();
+                    tbody.innerHTML += `<tr class="border-b border-slate-800/50">
+                        <td class="py-4 font-bold uppercase italic">${u.nick}</td>
+                        <td class="py-4"><span class="text-[10px] font-bold uppercase px-2 py-1 rounded ${u.status==='pendente'?'bg-yellow-500 text-black':'bg-green-500/10 text-green-500'}">${u.role} / ${u.status}</span></td>
+                        <td class="py-4 text-right space-x-2">
+                            <button onclick="db.collection('users').doc('${doc.id}').update({status:'aprovado'})" class="text-green-500 text-xs font-bold">✓</button>
+                            <button onclick="db.collection('users').doc('${doc.id}').update({role:'admin'})" class="text-blue-500 text-xs font-bold">ADM</button>
+                            <button onclick="if(confirm('Banir?'))db.collection('users').doc('${doc.id}').delete()" class="text-red-500 text-xs font-bold">X</button>
+                        </td></tr>`;
+                });
+            });
         }
 
-        async function editNick(id, oldNick) {
-            const newNick = prompt("Novo Nick do Char:", oldNick);
-            if(newNick && newNick.trim() !== "") {
-                try {
-                    await db.collection("users").doc(id).update({ nick: newNick.trim() });
-                    alert("Nick atualizado!");
-                } catch(e) { alert("Erro ao atualizar: " + e.message); }
-            }
+        function generateWarReport() {
+            const s = document.getElementById('filterStart').value, e = document.getElementById('filterEnd').value;
+            if(!s || !e) return alert("Datas!");
+            db.collection("reports").where("status", "==", "Aprovado").get().then(snap => {
+                let ms = {}, to = 0, tp = 0;
+                snap.forEach(doc => {
+                    const r = doc.data(), d = r.timestamp.toDate().toISOString().split('T')[0];
+                    if(d >= s && d <= e) { to++; tp += r.points; ms[r.reporter] = (ms[r.reporter] || 0) + r.points; }
+                });
+                if(to === 0) return alert("Sem registros!");
+                let l = `⚔️ **NEW ORDER AUDIT** ⚔️\n📅 **PERÍODO:** ${s} a ${e}\n📊 **TOTAL:** ${to} Ops | ${tp.toFixed(2)} pts\n\n🏆 **RANKING:**\n`;
+                Object.entries(ms).sort((a,b)=>b[1]-a[1]).forEach(([n,p],i)=> l += `${i+1}. ${n}: ${p.toFixed(2)} pts\n`);
+                const el = document.createElement('textarea'); el.value = l; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+                alert("Relatório copiado!");
+            });
         }
-
-        function openEditModal(id, s, p, r) { currentReportId = id; document.getElementById('editStatus').value = s; document.getElementById('editPoints').value = p || 0; document.getElementById('editReason').value = r || ''; toggleReasonField(); document.getElementById('editModal').style.display = 'flex'; }
-        function toggleReasonField() { document.getElementById('reasonDiv').style.display = document.getElementById('editStatus').value === 'Recusado' ? 'block' : 'none'; }
-        async function saveEdit() { await db.collection("reports").doc(currentReportId).update({ status: document.getElementById('editStatus').value, points: parseInt(document.getElementById('editPoints').value || 0), reason: document.getElementById('editStatus').value === 'Recusado' ? document.getElementById('editReason').value.trim() : "" }); closeModal('editModal'); }
-        function showUserPanel() { document.getElementById('userPanel').classList.toggle('hidden'); }
-        function toggleHuntedForm() { document.getElementById('huntedForm').classList.toggle('hidden'); }
-        function logout() { auth.signOut(); location.reload(); }
-        function openZoom(u) { document.getElementById('modalImg').src = u; document.getElementById('zoomModal').style.display = 'flex'; }
-        async function cleanupOldReports() { const limit = new Date(); limit.setDate(limit.getDate() - 30); const snap = await db.collection("reports").where("timestamp", "<", limit).get(); snap.forEach(doc => db.collection("reports").doc(doc.id).delete()); }
-        function generateWarReport() { const s = document.getElementById('filterStart').value, e = document.getElementById('filterEnd').value; if(!s || !e) return alert("Datas!"); db.collection("reports").where("status", "==", "Aprovado").get().then(snap => { let ms = {}, to = 0, tp = 0; snap.forEach(doc => { const r = doc.data(), d = r.timestamp.toDate().toISOString().split('T')[0]; if(d >= s && d <= e) { to++; tp += r.points; ms[r.reporter] = (ms[r.reporter] || 0) + r.points; } }); if(to === 0) return alert("Sem registros!"); let l = `⚔️ **NEW ORDER AUDIT** ⚔️\n📅 **PERÍODO:** ${s} a ${e}\n📊 **TOTAL:** ${to} Ops | ${tp} pts\n\n🏆 **RANKING:**\n`; Object.entries(ms).sort((a,b)=>b[1]-a[1]).forEach(([n,p],i)=> l += `${i+1}. ${n}: ${p} pts\n`); navigator.clipboard.writeText(l).then(() => alert("COPIADO!")); }); }
     </script>
 </body>
 </html>
